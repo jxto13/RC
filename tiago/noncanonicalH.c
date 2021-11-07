@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "stateM_lib.h"
 
