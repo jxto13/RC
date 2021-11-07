@@ -5,12 +5,13 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+
+#include "stateM_lib.h"
+
 
 
 #define BAUDRATE B38400
-#define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
@@ -22,11 +23,10 @@ int main(int argc, char** argv)
     int fd,c, res;
     struct termios oldtio,newtio;
     char buf[255];
-    int i, sum = 0, speed = 0;
-    
+
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
-  	      (strcmp("/dev/ttyS10", argv[1])!=0) )) {
+  	      (strcmp("/dev/ttyS11", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
@@ -36,8 +36,8 @@ int main(int argc, char** argv)
     Open serial port device for reading and writing and not as controlling tty
     because we don't want to get killed if linenoise sends CTRL-C.
   */
-
-
+  
+    
     fd = open(argv[1], O_RDWR | O_NOCTTY );
     if (fd <0) {perror(argv[1]); exit(-1); }
 
@@ -64,8 +64,6 @@ int main(int argc, char** argv)
     leitura do(s) pr�ximo(s) caracter(es)
   */
 
-
-
     tcflush(fd, TCIOFLUSH);
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
@@ -73,49 +71,27 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
+    printf("New termios structure set\n");
 
 
-    printf("Emissor mode:\n");
+    while (STOP==FALSE) {       
+      res = read(fd,buf,1);   
+      buf[res]=0;               
+      printf("%x\n",buf[0]);
 
-    printf("Enter a string, max 255 char: ");
-    gets(buf);
-
-    int size_buf = strlen(buf); 
-    printf("%d\n", size_buf);
-    buf[size_buf] = '\0';
-    
-    
-    res = write(fd,buf,size_buf+1);   
-    printf("bytes written - %d\n", res);
-
-  /* 
-    O ciclo FOR e as instrucoes seguintes devem ser alterados de modo a respeitar 
-    o indicado no guiao 
-  */
-
-    printf("Recetor mode:\n");
-
-    // reset variables
-
-    memset(buf, 0, 255);
-
-    while(STOP==FALSE){
-      res = read(fd,buf,1);
-      buf[res] = 0;
-      printf("%s", buf);
-      if (buf[0]=='\0') STOP=TRUE;
-    }
-   
-    printf("\n");
-
-    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-      perror("tcsetattr");
-      exit(-1);
+      // so para de ler quando ler uma flag valida
+      if(stateM(buf[0]) == 1) {
+        STOP=TRUE;
+        printf("Received a valid SET message!\n");
+      }
     }
 
+    printf("Responding with a UA message\n");
+    char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
+    res = write(fd,UA,5);
 
-
+    tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
 }

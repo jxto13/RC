@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
+#include <signal.h>
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
@@ -16,6 +17,17 @@
 #define TRUE 1
 
 volatile int STOP=FALSE;
+
+int flag=1, conta=1;
+
+void atende()                   // atende alarme
+{
+	printf("alarme # %d\n", conta);
+	flag=1;
+	conta++;
+}
+
+
 
 int main(int argc, char** argv)
 {
@@ -76,36 +88,42 @@ int main(int argc, char** argv)
 
 
     printf("Emissor mode:\n");
+    char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
-    printf("Enter a string, max 255 char: ");
-    gets(buf);
-
-    int size_buf = strlen(buf); 
-    printf("%d\n", size_buf);
-    buf[size_buf] = '\0';
+    // char message[10] = {0x7E,0x03,0x04,0x7E,0x7E,0x03,0x03,0x00,0x7E,0x7E};
+    char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
     
-    
-    res = write(fd,buf,size_buf+1);   
+    res = write(fd,message,11);
+     
     printf("bytes written - %d\n", res);
 
-  /* 
-    O ciclo FOR e as instrucoes seguintes devem ser alterados de modo a respeitar 
-    o indicado no guiao 
-  */
 
     printf("Recetor mode:\n");
 
-    // reset variables
+    (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
+
+    // while(conta < 4){
+    //   if(flag){
+    //       alarm(3);                 // activa alarme de 3s
+    //       printf("here\n");
+    //       flag=0;
+    //   }
+    // }
+    printf("Vou terminar.\n");
 
     memset(buf, 0, 255);
 
     while(STOP==FALSE){
       res = read(fd,buf,1);
       buf[res] = 0;
-      printf("%s", buf);
-      if (buf[0]=='\0') STOP=TRUE;
+      // printf("%x", buf);
+      if (strcmp(buf,UA)) STOP=TRUE;
     }
-   
+    for (int i = 0; i < 5; i++)
+    {
+      printf("%x",UA[i]);
+    }
+    
     printf("\n");
 
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
