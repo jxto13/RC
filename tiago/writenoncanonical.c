@@ -20,8 +20,7 @@ volatile int STOP=FALSE;
 
 int flag=1, conta=1;
 
-void atende()                   // atende alarme
-{
+void atende() {                   // atende alarme
 	printf("alarme # %d\n", conta);
 	flag=1;
 	conta++;
@@ -31,10 +30,9 @@ void atende()                   // atende alarme
 
 int main(int argc, char** argv)
 {
-    int fd,c, res;
+    int fd, res;
     struct termios oldtio,newtio;
     char buf[255];
-    int i, sum = 0, speed = 0;
     
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
@@ -94,11 +92,12 @@ int main(int argc, char** argv)
     char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
     
     res = write(fd,message,11);
-     
-    printf("bytes written - %d\n", res);
+    
+    printf("Sending SET message\n");
+    // printf("bytes written - %d\n", res);
 
 
-    printf("Recetor mode:\n");
+    printf("Waiting response:\n");
 
     (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
@@ -109,7 +108,7 @@ int main(int argc, char** argv)
     //       flag=0;
     //   }
     // }
-    printf("Vou terminar.\n");
+    // printf("Vou terminar.\n");
 
     memset(buf, 0, 255);
 
@@ -117,15 +116,12 @@ int main(int argc, char** argv)
       res = read(fd,buf,1);
       buf[res] = 0;
       // printf("%x", buf);
-      if (strcmp(buf,UA)) STOP=TRUE;
-    }
-    for (int i = 0; i < 5; i++)
-    {
-      printf("%x",UA[i]);
+      if (strcmp(buf,UA)){
+          STOP=TRUE;
+          printf("UA message recived\n");
+      } 
     }
     
-    printf("\n");
-
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);

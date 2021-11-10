@@ -1,25 +1,27 @@
 #include <stdio.h>
-#include "stateM_lib.h"
+#include <unistd.h>
+#include <signal.h>
+
+int flag=1, conta=1;
+
+void atende() {                   // atende alarme
+	printf("alarme # %d\n", conta);
+	flag=1;
+	conta++;
+}
+
 
 int main(){
-    int i = 0;
-    // char buf[10] = {0x7E,0x03,0x04,0x7E,0x7E,0x03, 0x03, 0x00, 0x7E, 0x7E};
-    char buf[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
+    (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
-    while(i < 10){
-        // if(stateM(buf[i]) == 1){
-        //     printf("%d %d ",i, stateM(buf[i]));
-        //     printf("Machine worked..\n");
-        // }
-        if(stateM(buf[i]) == 0){
-            printf("%d %x ",i, buf[i]);
-            printf("Machine loading..\n");
-        }
-        else{
-            printf("%d %x ",i, buf[i]);
-            printf("Machine worked!\n");
-        }
-        i++;
-    }  
+    while(conta < 4){
+      if(flag){
+          alarm(3);                 // activa alarme de 3s
+          printf("here\n");
+          flag=0;
+      }
+    }
+    printf("Vou terminar.\n");
+
 
 }

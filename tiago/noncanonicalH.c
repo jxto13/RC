@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "stateM_lib.h"
 
@@ -21,7 +22,7 @@ volatile int STOP=FALSE;
 
 int main(int argc, char** argv)
 {
-    int fd,c, res;
+    int fd, res;
     struct termios oldtio,newtio;
     char buf[255];
 
@@ -78,7 +79,7 @@ int main(int argc, char** argv)
     while (STOP==FALSE) {       
       res = read(fd,buf,1);   
       buf[res]=0;               
-      printf("%x\n",buf[0]);
+      // printf("%x\n",buf[0]);
 
       // so para de ler quando ler uma flag valida
       if(stateM(buf[0]) == 1) {

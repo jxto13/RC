@@ -14,7 +14,7 @@ void clear_machine(){
 }
 
 int stateM(char state){
-    printf("F = %d, A = %d, C = %d, BCC = %d\n",F,A,C,BCC);
+    // printf("F = %d, A = %d, C = %d, BCC = %d\n",F,A,C,BCC);
     switch (state){
 
     case 0x7E: //Se encontrar uma flag
