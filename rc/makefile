@@ -16,7 +16,7 @@ run:
 run_reader:
 	@./reader /dev/ttyS11
 run_emissor:
-	@./emissor /dev/ttyS4	
+	@./emissor /dev/ttyS10	
 
 clean:
 	@rm -rf *.o *.gch main

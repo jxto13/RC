@@ -18,11 +18,12 @@
 
 volatile int STOP=FALSE;
 
-int flag=1, conta=1;
+int flag=1, conta=1, UA_flag = 0, stopLoop = 1;
 
 void atende() {                   // atende alarme
 	printf("alarme # %d\n", conta);
 	flag=1;
+  if(UA_flag == 1) stopLoop = 0;
 	conta++;
 }
 
@@ -36,7 +37,7 @@ int main(int argc, char** argv)
     
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
-  	     (strcmp("/dev/ttyS4", argv[1])!=0) && 
+  	    //  (strcmp("/dev/ttyS4", argv[1])!=0) && 
   	     (strcmp("/dev/ttyS10", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
@@ -92,36 +93,51 @@ int main(int argc, char** argv)
     // char message[10] = {0x7E,0x03,0x04,0x7E,0x7E,0x03,0x03,0x00,0x7E,0x7E};
     char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
     
-    res = write(fd,message,11);
     
     printf("Sending SET message\n");
-    // printf("bytes written - %d\n", res);
+    res = write(fd,message,10);
+    printf("bytes written - %d\n", res);
 
 
     printf("Waiting response:\n");
 
     (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
-    // while(conta < 4){
-    //   if(flag){
-    //       alarm(3);                 // activa alarme de 3s
-    //       printf("here\n");
-    //       flag=0;
-    //   }
-    // }
-    // printf("Vou terminar.\n");
 
     memset(buf, 0, 255);
 
-    while(STOP==FALSE){
-      res = read(fd,buf,1);
-      buf[res] = 0;
-  
-      if (stateM_UA(buf[0]) == 1){
-          STOP=TRUE;
-          printf("UA message recived\n");
-      } 
+
+    while(conta < 4){
+
+      if(flag){
+          alarm(3);                 // activa alarme de 3s
+          flag=0;
+          while (stopLoop!=0 || UA_flag == 1){
+            res = read(fd,buf,1);
+            buf[res] = 0;
+            if (stateM_UA(buf[0]) == 1){
+              UA_flag = 1;
+              printf("UA message recived\n");
+              break;
+            } 
+          }
+          
+      }
+      // if(conta == 2) UA_flag = 1; //isto era pra testar
     }
+    printf("Vou terminar.\n");
+
+    // memset(buf, 0, 255);
+
+    // while(STOP==FALSE){
+    //   res = read(fd,buf,1);
+    //   buf[res] = 0;
+  
+    //   if (stateM_UA(buf[0]) == 1){
+    //       STOP=TRUE;
+    //       printf("UA message recived\n");
+    //   } 
+    // }
     
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");

@@ -82,13 +82,14 @@ int main(int argc, char** argv)
       // printf("%x\n",buf[0]);
 
       // so para de ler quando ler uma flag valida
-      if(stateM(buf[0]) == 1) {
+      if(stateM_SET(buf[0]) == 1) {
         STOP=TRUE;
         printf("Received a valid SET message!\n");
       }
     }
 
     printf("Responding with a UA message\n");
+    sleep(4);
     char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
     res = write(fd,UA,5);
