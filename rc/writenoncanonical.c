@@ -10,6 +10,10 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include "stateM_lib.h"
+
+
+
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
@@ -18,15 +22,29 @@
 
 volatile int STOP=FALSE;
 
-int flag=1, conta=1, UA_flag = 0, stopLoop = 1;
+int flag=1, conta=1, UA_flag = 0, stopLoop = 1, read_buffer = 0;
 
 void atende() {                   // atende alarme
 	printf("alarme # %d\n", conta);
 	flag=1;
-  if(UA_flag == 1) stopLoop = 0;
+  // if(UA_flag == 1) stopLoop = 0;
+  stopLoop = 0;
 	conta++;
+  read_buffer = 0;
 }
 
+int state_conf(unsigned char buf[]){
+  int size = sizeof(buf) ;
+  // printf("sizeof(buf) %ld\n",size); //perguntar pk que da um size de 8
+
+  for (int i = 0; i < size; i++){
+    if (stateM_UA(buf[i]) == 1){
+      printf("UA message recived\n");
+      return 1;
+    } 
+  }
+  return 0;
+}
 
 
 int main(int argc, char** argv)
@@ -88,7 +106,6 @@ int main(int argc, char** argv)
 
 
     printf("Emissor mode:\n");
-    char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
     // char message[10] = {0x7E,0x03,0x04,0x7E,0x7E,0x03,0x03,0x00,0x7E,0x7E};
     char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
@@ -107,23 +124,50 @@ int main(int argc, char** argv)
     memset(buf, 0, 255);
 
 
-    while(conta < 4){
+    // while(conta < 4){
+    //   // if(UA_flag == 1) break;
+    //   if(flag){
+    //       alarm(3);                 // activa alarme de 3s
+    //       flag=0;
+    //       printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
+    //       while (stopLoop != 0 || UA_flag != 1){
+    //         res = read(fd,buf,1);
+    //         buf[res] = 0;
+    //         if (stateM_UA(buf[0]) == 1){
+    //           UA_flag = 1;
+    //           // alarm(0);
+    //           printf("UA message recived\n");
+    //           break;
+    //         } 
+    //       }
+    //   }
+    // }
 
+  while(conta < 4){
+      // printf("here\n");
+      if(read_buffer == 0){
+        // print("readed %d \n", read(fd,buf,255));
+        if(state_conf(buf) == 1) break;
+        read_buffer = 1;
+      }
+      // if(UA_flag == 1) break;
+      
+      // printf("inside wile flag %d | conta %d\n",flag,conta);
+      // buf[res] = 0;
+      // if (stateM_UA(buf[0]) == 1){
+      //   UA_flag = 1;
+      //         // alarm(0);
+      //   printf("UA message recived\n");
+      //   break;
+      // } 
       if(flag){
           alarm(3);                 // activa alarme de 3s
           flag=0;
-          while (stopLoop!=0 || UA_flag == 1){
-            res = read(fd,buf,1);
-            buf[res] = 0;
-            if (stateM_UA(buf[0]) == 1){
-              UA_flag = 1;
-              printf("UA message recived\n");
-              break;
-            } 
-          }
-          
+          // printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
+          printf("flag %d | conta %d\n",flag,conta);
+
+            
       }
-      // if(conta == 2) UA_flag = 1; //isto era pra testar
     }
     printf("Vou terminar.\n");
 

@@ -89,7 +89,7 @@ int main(int argc, char** argv)
     }
 
     printf("Responding with a UA message\n");
-    sleep(4);
+    sleep(12);
     char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
     res = write(fd,UA,5);
