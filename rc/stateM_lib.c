@@ -52,7 +52,7 @@ int stateM_SET(char state){
 
 int stateM_UA(char state){
 
-    printf("F = %d, A = %d, C = %d, BCC = %d\n",F,A,C,BCC);
+    // printf("F = %d, A = %d, C = %d, BCC = %d\n",F,A,C,BCC);
     switch (state){
 
     case 0x7E: //Se encontrar uma flag

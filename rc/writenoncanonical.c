@@ -20,9 +20,15 @@
 #define FALSE 0
 #define TRUE 1
 
+#define TIMEOUT 3
+
 volatile int STOP=FALSE;
 
+    unsigned char buf[255];
+
+//---------------
 int flag=1, conta=1, UA_flag = 0, stopLoop = 1, read_buffer = 0;
+//---------------
 
 void atende() {                   // atende alarme
 	printf("alarme # %d\n", conta);
@@ -30,14 +36,14 @@ void atende() {                   // atende alarme
   // if(UA_flag == 1) stopLoop = 0;
   stopLoop = 0;
 	conta++;
-  read_buffer = 0;
+  // read_buffer = 0;
+
 }
 
-int state_conf(unsigned char buf[]){
-  int size = sizeof(buf) ;
-  // printf("sizeof(buf) %ld\n",size); //perguntar pk que da um size de 8
+int state_conf(unsigned char buf[], int res){
+      printf("here\n");
 
-  for (int i = 0; i < size; i++){
+  for (int i = 0; i < res; i++){
     if (stateM_UA(buf[i]) == 1){
       printf("UA message recived\n");
       return 1;
@@ -84,8 +90,8 @@ int main(int argc, char** argv)
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
 
-    newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
+    newtio.c_cc[VTIME]    = 1;   /* inter-character timer unused */
+    newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
 
 
 
@@ -121,8 +127,24 @@ int main(int argc, char** argv)
     (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
 
-    memset(buf, 0, 255);
 
+// int aux = 0, ret = 0;
+// while(contador_timeouts<3){    
+//     flag_alarm=0;    
+//     printf("Reenviando pedido.\n");    
+//     alarm(TIMEOUT);        
+//     while (ret < tamanho_a_ler && !flag_alarm)     //Enquanto não leres tudo e o alarm não disparou    
+//    {         
+//         aux=read(fd,frame_conflig,1);            //tentas ler alguma coisa.         
+//         if(aux>0)                                 // o read pode-te retornar -1, não podes somar esse valor directamente ao ret.            
+//              ret+=aux;    
+//    }   
+//     alarm(0);                                //desactiva o alarm, caso este ainda não tenha disparado.    
+//     if (ret==tamanho_a_ler)                  //o alarm nao disparou.         
+//              break;    
+//     else        
+//              contador_timeouts++;
+// }
 
     // while(conta < 4){
     //   // if(UA_flag == 1) break;
@@ -144,11 +166,21 @@ int main(int argc, char** argv)
     // }
 
   while(conta < 4){
+      if(flag){
+          alarm(3);
+          flag=0;
+          // printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
+          printf("flag %d | conta %d\n",flag,conta);
+      }
       // printf("here\n");
       if(read_buffer == 0){
-        // print("readed %d \n", read(fd,buf,255));
-        if(state_conf(buf) == 1) break;
-        read_buffer = 1;
+        res =  read(fd,buf,255);
+
+        if(state_conf(buf,res) == 1){
+          break;
+        } 
+          read_buffer = 1;
+        
       }
       // if(UA_flag == 1) break;
       
@@ -160,15 +192,14 @@ int main(int argc, char** argv)
       //   printf("UA message recived\n");
       //   break;
       // } 
-      if(flag){
-          alarm(3);                 // activa alarme de 3s
-          flag=0;
-          // printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
-          printf("flag %d | conta %d\n",flag,conta);
-
-            
-      }
+      // if(flag){
+      //     alarm(3);                 // activa alarme de 3s
+      //     flag=0;
+      //     // printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
+      //     printf("flag %d | conta %d\n",flag,conta);
+      // }
     }
+
     printf("Vou terminar.\n");
 
     // memset(buf, 0, 255);
