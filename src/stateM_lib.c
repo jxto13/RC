@@ -87,3 +87,23 @@ int stateM_UA(char state){
     }
     return 0;
 }
+
+int state_conf_SET(unsigned char buf[], int res){
+  for (int i = 0; i < res; i++){
+    if (stateM_SET(buf[i]) == 1){
+      printf("UA message recived\n");
+      return 1;
+    } 
+  }
+  return 0;
+}
+
+int state_conf_UA(unsigned char buf[], int res){
+  for (int i = 0; i < res; i++){
+    if (stateM_UA(buf[i]) == 1){
+      printf("UA message recieved\n");
+      return 1;
+    } 
+  }
+  return 0;
+}

@@ -5,49 +5,51 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "stateM_lib.h"
 
-
-
 #define BAUDRATE B38400
+#define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
 
+#define TIMEOUT 3
+
 volatile int STOP=FALSE;
 
-int state_conf(unsigned char buf[], int res){
-  for (int i = 0; i < res; i++){
-    if (stateM_SET(buf[i]) == 1){
-      printf("UA message recived\n");
-      return 1;
-    } 
-  }
-  return 0;
+int flag=1, conta=1, UA_flag = 0, stopLoop = 1, read_buffer = 0;
+
+
+void atende() {                   // atende alarme
+	printf("alarme # %d\n", conta);
+	flag=1;
+	conta++;
 }
 
-int main(int argc, char** argv)
-{
-    int fd, res;
-    struct termios oldtio,newtio;
-    unsigned char buf[255];
 
-    if (argc < 2)  {
+
+int main(int argc, char** argv) {
+
+    int fd, res;
+    struct termios oldtio, newtio;
+    unsigned char buf[255];
+    
+    if (argc < 2) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
-
 
   /*
     Open serial port device for reading and writing and not as controlling tty
     because we don't want to get killed if linenoise sends CTRL-C.
   */
-  
-    
+
+
     fd = open(argv[1], O_RDWR | O_NOCTTY );
     if (fd <0) {perror(argv[1]); exit(-1); }
 
@@ -63,17 +65,13 @@ int main(int argc, char** argv)
 
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
-
-    newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+    newtio.c_cc[VTIME]    = 1;   /* inter-character timer unused */
     newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
-
-
 
   /* 
     VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
     leitura do(s) pr�ximo(s) caracter(es)
   */
-
     tcflush(fd, TCIOFLUSH);
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
@@ -81,30 +79,45 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
-    printf("New termios structure set\n");
+  // ---------------------------------------------------------------------------
 
+    printf("Emissor mode:\n");
 
-    while (STOP==FALSE) {       
-      res = read(fd,buf,1);   
-      buf[res]=0;               
-      // printf("%x\n",buf[0]);
+    char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
+    
+    printf("Sending SET message\n");
+    res = write(fd,message,10);
+    printf("bytes written - %d\n", res);
 
-      // so para de ler quando ler uma flag valida
-      // if(state_conf(buf,res) == 1) {
+    printf("Waiting response:\n");
 
-      if(stateM_SET(buf[0]) == 1) {
-        STOP=TRUE;
-        printf("Received a valid SET message!\n");
+    (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
+
+    while(conta < 4){
+      if(UA_flag == 1) break;
+
+      if(flag){
+          alarm(3);
+          flag=0;
+          printf("flag %d | conta %d\n",flag,conta);
       }
+      if((res = read(fd,buf,255)) > 0){
+        if(state_conf_UA(buf,res) == 1){
+          UA_flag = 1;
+          printf("UA message recieved\n");
+          break;
+        } 
+      }
+    } 
+
+    printf("Vou terminar.\n");
+
+    
+    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+      perror("tcsetattr");
+      exit(-1);
     }
 
-    printf("Responding with a UA message\n");
-    sleep(5);
-    char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
-
-    res = write(fd,UA,5);
-
-    tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
 }
