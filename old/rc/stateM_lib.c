@@ -91,7 +91,7 @@ int stateM_UA(char state){
 int state_conf_SET(unsigned char buf[], int res){
   for (int i = 0; i < res; i++){
     if (stateM_SET(buf[i]) == 1){
-      printf("UA message recived\n");
+      printf("SET message recived\n");
       return 1;
     } 
   }

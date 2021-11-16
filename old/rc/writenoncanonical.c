@@ -22,7 +22,7 @@
 
 volatile int STOP=FALSE;
 
-int flag=1, conta=1, UA_flag = 0, stopLoop = 1, read_buffer = 0;
+int flag=1, conta=1;
 
 
 void atende() {                   // atende alarme
@@ -94,17 +94,13 @@ int main(int argc, char** argv) {
     (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
     while(conta < 4){
-      if(UA_flag == 1) break;
 
       if(flag){
           alarm(3);
           flag=0;
-          printf("flag %d | conta %d\n",flag,conta);
       }
       if((res = read(fd,buf,255)) > 0){
         if(state_conf_UA(buf,res) == 1){
-          UA_flag = 1;
-          printf("UA message recieved\n");
           break;
         } 
       }
