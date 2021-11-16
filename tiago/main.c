@@ -8,6 +8,28 @@
 #include <unistd.h>
 #include <signal.h>
 
+int flag = 1, conta = 0;
+
+void atende() {                   // atende alarme
+	printf("alarme # %d\n", conta);
+	flag=1;
+	conta++;
+}
+
+int main(){
+
+    (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
+
+    while (conta < 4){
+        // if(flag){
+          alarm(3);
+          flag=0;
+    //   }
+    }
+    
+    
+}
+
 // int flag_alarm=0;
 
 // void timeout_handler(int signal){    
@@ -31,38 +53,38 @@
 //         contador_timeouts++;
 // }
 
+// // }
+// #define TIMEOUT 3
+// int flag_alarm=0, contador_timeouts = 3,tamanho_a_ler = 255;
+// unsigned char frame_conflig[255];
+
+// void timeout_handler(int signal){             
+//    flag_alarm=1;
+// } 
+// int main(){
+
+// signal(SIGALRM, timeout_handler);  
+
+
+// int aux = 0;
+// while(contador_timeouts<3){    
+//     flag_alarm=0;    
+//     printf("Reenviando pedido.\n");    
+//     write(fd, frame, sizeof(frame));    
+//     alarme(TIMEOUT);        
+//     while (ret < tamanho_a_ler && !flag_alarm)     //Enquanto não leres tudo e o alarm não disparou    
+//    {         
+//         aux=read(fd,frame_conflig[5]);            //tentas ler alguma coisa.         
+//         if(aux>0)                                 // o read pode-te retornar -1, não podes somar esse valor directamente ao ret.            
+//              ret+=aux;    
+//    }   
+//     alarm(0);                                //desactiva o alarm, caso este ainda não tenha disparado.    
+//     if (ret==tamanho_a_ler)                  //o alarm nao disparou.         
+//              break;    
+//     else        
+//              contador_timeouts++;
 // }
-#define TIMEOUT 3
-int flag_alarm=0, contador_timeouts = 3,tamanho_a_ler = 255;
-unsigned char frame_conflig[255];
-
-void timeout_handler(int signal){             
-   flag_alarm=1;
-} 
-int main(){
-
-signal(SIGALRM, timeout_handler);  
-
-
-int aux = 0;
-while(contador_timeouts<3){    
-    flag_alarm=0;    
-    printf("Reenviando pedido.\n");    
-    write(fd, frame, sizeof(frame));    
-    alarme(TIMEOUT);        
-    while (ret < tamanho_a_ler && !flag_alarm)     //Enquanto não leres tudo e o alarm não disparou    
-   {         
-        aux=read(fd,frame_conflig[5]);            //tentas ler alguma coisa.         
-        if(aux>0)                                 // o read pode-te retornar -1, não podes somar esse valor directamente ao ret.            
-             ret+=aux;    
-   }   
-    alarm(0);                                //desactiva o alarm, caso este ainda não tenha disparado.    
-    if (ret==tamanho_a_ler)                  //o alarm nao disparou.         
-             break;    
-    else        
-             contador_timeouts++;
-}
-}
+// }
 
 // int ACTIVO = FALSE;
 // int timeoutCounter =0;

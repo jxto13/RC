@@ -20,15 +20,23 @@
 
 volatile int STOP=FALSE;
 
+int state_conf(unsigned char buf[], int res){
+  for (int i = 0; i < res; i++){
+    if (stateM_SET(buf[i]) == 1){
+      printf("UA message recived\n");
+      return 1;
+    } 
+  }
+  return 0;
+}
+
 int main(int argc, char** argv)
 {
     int fd, res;
     struct termios oldtio,newtio;
     unsigned char buf[255];
 
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
-  	      (strcmp("/dev/ttyS11", argv[1])!=0) )) {
+    if (argc < 2)  {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
@@ -82,6 +90,8 @@ int main(int argc, char** argv)
       // printf("%x\n",buf[0]);
 
       // so para de ler quando ler uma flag valida
+      // if(state_conf(buf,res) == 1) {
+
       if(stateM_SET(buf[0]) == 1) {
         STOP=TRUE;
         printf("Received a valid SET message!\n");
@@ -89,7 +99,7 @@ int main(int argc, char** argv)
     }
 
     printf("Responding with a UA message\n");
-    sleep(12);
+    sleep(5);
     char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
     res = write(fd,UA,5);

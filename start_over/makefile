@@ -7,16 +7,16 @@ stateM_lib.o: stateM_lib.h stateM_lib.c
 emissor: stateM_lib.o writenoncanonical.c
 	@gcc -Wall -o emissor writenoncanonical.c stateM_lib.o
 
-reciver: stateM_lib.o noncanonicalH.c
-	@gcc -Wall -o reader noncanonicalH.c stateM_lib.o
+reciver: stateM_lib.o noncanonical.c
+	@gcc -Wall -o reader noncanonical.c stateM_lib.o
 
 run: 
 	@./main
 
 run_reader:
-	@./reader /dev/ttyS10
+	@./reader /dev/ttyS11
 run_emissor:
-	@./emissor /dev/ttyS11	
+	@./emissor /dev/ttyS10	
 
 clean:
 	@rm -rf *.o *.gch main

@@ -12,8 +12,6 @@
 
 #include "stateM_lib.h"
 
-
-
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
@@ -24,28 +22,27 @@
 
 volatile int STOP=FALSE;
 
-    unsigned char buf[255];
-
-//---------------
 int flag=1, conta=1, UA_flag = 0, stopLoop = 1, read_buffer = 0;
-//---------------
+
 
 void atende() {                   // atende alarme
+  // if(UA_flag == 1){
+  //   // stopLoop = 0;
+  //   return;
+  // }  
 	printf("alarme # %d\n", conta);
 	flag=1;
-  // if(UA_flag == 1) stopLoop = 0;
-  stopLoop = 0;
 	conta++;
+  // stopLoop = 0;
   // read_buffer = 0;
 
 }
 
 int state_conf(unsigned char buf[], int res){
-      printf("here\n");
-
+  
   for (int i = 0; i < res; i++){
     if (stateM_UA(buf[i]) == 1){
-      printf("UA message recived\n");
+      // printf("UA message recived\n");
       return 1;
     } 
   }
@@ -53,16 +50,13 @@ int state_conf(unsigned char buf[], int res){
 }
 
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
+
     int fd, res;
-    struct termios oldtio,newtio;
+    struct termios oldtio, newtio;
     unsigned char buf[255];
     
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
-  	    //  (strcmp("/dev/ttyS4", argv[1])!=0) && 
-  	     (strcmp("/dev/ttyS10", argv[1])!=0) )) {
+    if (argc < 2) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
@@ -89,18 +83,13 @@ int main(int argc, char** argv)
 
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
-
     newtio.c_cc[VTIME]    = 1;   /* inter-character timer unused */
     newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
-
-
 
   /* 
     VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
     leitura do(s) pr�ximo(s) caracter(es)
   */
-
-
 
     tcflush(fd, TCIOFLUSH);
 
@@ -109,83 +98,90 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
+    unsigned char b;
+    printf("supppppp\n");
 
+    int res1 = read(fd,&b, 1);
+    printf("%d\n",res1);
+
+    return 0;
+  // ---------------------------------------------------------------------------
 
     printf("Emissor mode:\n");
 
-    // char message[10] = {0x7E,0x03,0x04,0x7E,0x7E,0x03,0x03,0x00,0x7E,0x7E};
     char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
-    
     
     printf("Sending SET message\n");
     res = write(fd,message,10);
     printf("bytes written - %d\n", res);
 
-
     printf("Waiting response:\n");
 
     (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
+    // fd_set current_sockets, ready_sockets;
 
+    // FD_ZERO(&current_sockets);
+    // FD_SET(fd, &current_sockets);
 
-// int aux = 0, ret = 0;
-// while(contador_timeouts<3){    
-//     flag_alarm=0;    
-//     printf("Reenviando pedido.\n");    
-//     alarm(TIMEOUT);        
-//     while (ret < tamanho_a_ler && !flag_alarm)     //Enquanto não leres tudo e o alarm não disparou    
-//    {         
-//         aux=read(fd,frame_conflig,1);            //tentas ler alguma coisa.         
-//         if(aux>0)                                 // o read pode-te retornar -1, não podes somar esse valor directamente ao ret.            
-//              ret+=aux;    
-//    }   
-//     alarm(0);                                //desactiva o alarm, caso este ainda não tenha disparado.    
-//     if (ret==tamanho_a_ler)                  //o alarm nao disparou.         
-//              break;    
-//     else        
-//              contador_timeouts++;
-// }
-
-    // while(conta < 4){
-    //   // if(UA_flag == 1) break;
-    //   if(flag){
-    //       alarm(3);                 // activa alarme de 3s
-    //       flag=0;
-    //       printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
-    //       while (stopLoop != 0 || UA_flag != 1){
-    //         res = read(fd,buf,1);
-    //         buf[res] = 0;
-    //         if (stateM_UA(buf[0]) == 1){
-    //           UA_flag = 1;
-    //           // alarm(0);
-    //           printf("UA message recived\n");
-    //           break;
-    //         } 
-    //       }
+    // while(1){
+    //   ready_sockets = current_sockets;
+    
+    //   if(select(FD_SETSIZE, &ready_sockets, NULL, NULL, 3) <0){
+    //     printf("Select fail\n");
+    //     return;
     //   }
+
+    //   for (int i = 0; i < FD_SETSIZE; i++){
+    //     if(FD_ISSET(i, &ready_sockets)){
+    //       if(i == fd){
+    //         printf("INFORMACAO\n");
+
+    //       } else{
+    //         res =  read(fd,buf,255);
+    //         printf("res %d\n",res);
+    //       }
+    //     }
+    //   }
+      
+
     // }
 
+
   while(conta < 4){
+      if(UA_flag == 1) break;
+
       if(flag){
           alarm(3);
           flag=0;
-          // printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
           printf("flag %d | conta %d\n",flag,conta);
       }
-      // printf("here\n");
-      if(read_buffer == 0){
-        res =  read(fd,buf,255);
+      printf("here\n");
+      if((res = read(fd,buf,255)) > 0){
+        printf("here dentro if\n");
 
         if(state_conf(buf,res) == 1){
+          UA_flag = 1;
+          printf("UA message recieved\n");
+          // printf("res %d\n",res);
           break;
         } 
-          read_buffer = 1;
-        
+        // read_buffer = 1;
+      }else{
+        printf("nao li nd\n");
       }
-      // if(UA_flag == 1) break;
+    } 
+
+    printf("Vou terminar.\n");
+
+
+
+
       
       // printf("inside wile flag %d | conta %d\n",flag,conta);
-      // buf[res] = 0;
+    //  buf[res] = 0;
+        // res = read(fd,buf,255);
+
       // if (stateM_UA(buf[0]) == 1){
       //   UA_flag = 1;
       //         // alarm(0);
@@ -198,9 +194,6 @@ int main(int argc, char** argv)
       //     // printf("stopLoop %d | UA_flag %d\n",stopLoop,UA_flag);
       //     printf("flag %d | conta %d\n",flag,conta);
       // }
-    }
-
-    printf("Vou terminar.\n");
 
     // memset(buf, 0, 255);
 
