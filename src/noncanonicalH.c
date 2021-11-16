@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
 
-    newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+    newtio.c_cc[VTIME]    = 1;   /* inter-character timer unused */
     newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
 
   /* 
@@ -72,23 +72,26 @@ int main(int argc, char** argv)
     }
 
     printf("New termios structure set\n");
+    sleep(10);
 
-    while (STOP==FALSE) {       
-      res = read(fd,buf,1);   
-      buf[res]=0;               
-
-      if(stateM_SET(buf[0]) == 1) {
-        STOP=TRUE;
-        printf("Received a valid SET message!\n");
+    while (STOP==FALSE) {
+      if((res = read(fd,buf,255)) > 0){
+        if(state_conf_SET(buf,res) == 1){
+          break;
+        } 
       }
     }
 
     printf("Responding with a UA message\n");
 
-    sleep(5);
+    // sleep(5);
     char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
-    res = write(fd,UA,5);
+    if((res = write(fd,UA,5)) < 0){
+      // tratamento se write retornar -1, algo correu mal
+      printf("Error occurred at write() function.\n Exiting! \n");
+      exit(1);
+    }
 
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);

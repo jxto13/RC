@@ -22,16 +22,13 @@
 
 volatile int STOP=FALSE;
 
-int flag=1, conta=1, UA_flag = 0, stopLoop = 1, read_buffer = 0;
-
+int flag=1, conta=1;
 
 void atende() {                   // atende alarme
-	printf("alarme # %d\n", conta);
+	printf("No valid message recieved! Resending message... %d\\%d\n",conta,TIMEOUT);
 	flag=1;
 	conta++;
 }
-
-
 
 int main(int argc, char** argv) {
 
@@ -86,25 +83,24 @@ int main(int argc, char** argv) {
     char message[10] = {0x7E,0x03,0x07,0x04,0x00,0x7E, 0x03, 0x03, 0x00, 0x7E};
     
     printf("Sending SET message\n");
-    res = write(fd,message,10);
-    printf("bytes written - %d\n", res);
-
-    printf("Waiting response:\n");
 
     (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
 
-    while(conta < 4){
-      if(UA_flag == 1) break;
+    while(conta <= TIMEOUT){
 
       if(flag){
           alarm(3);
           flag=0;
-          printf("flag %d | conta %d\n",flag,conta);
+          // Perguntar ao professor se isto equivale a reenviar 3xs
+          if((res = write(fd,message,10)) < 0){
+            // tratamento se write retornar -1, algo correu mal
+            printf("Error occurred at write() function.\n Exiting! \n");
+            exit(1);
+          }
       }
+
       if((res = read(fd,buf,255)) > 0){
         if(state_conf_UA(buf,res) == 1){
-          UA_flag = 1;
-          printf("UA message recieved\n");
           break;
         } 
       }

@@ -36,6 +36,7 @@ int stateM_SET(char state){
             C = 1;
             break;
         } 
+        break;
 
     case 0x00:
         //caso de A = 3 e C = 3, flag "SET", BCC=A^C=0
@@ -43,6 +44,8 @@ int stateM_SET(char state){
             BCC = 1;
             break;
         }
+        break;
+
     default:
         clear_machine(&A,&C,&BCC,&F);
         break;
@@ -69,11 +72,14 @@ int stateM_UA(char state){
             A = 1;
             break;
         } 
+        break;
+
     case 0x07:
         if(A == 1 && C == 0){
             C = 1;
             break;
         }
+        break;
 
     case 0x04:
         //caso de A = 3 e C = 3, flag "SET", BCC=A^C=0
@@ -81,6 +87,8 @@ int stateM_UA(char state){
             BCC = 1;
             break;
         }
+        break;
+        
     default:
         clear_machine();
         break;
@@ -91,7 +99,7 @@ int stateM_UA(char state){
 int state_conf_SET(unsigned char buf[], int res){
   for (int i = 0; i < res; i++){
     if (stateM_SET(buf[i]) == 1){
-      printf("UA message recived\n");
+      printf("SET message recived\n");
       return 1;
     } 
   }
