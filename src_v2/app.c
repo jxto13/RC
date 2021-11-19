@@ -22,10 +22,6 @@ int main(int argc, char** argv) {
     applicationLayer app;
 
     app.fileDescriptor = open(argv[1], O_RDWR | O_NOCTTY);
-    if (app.fileDescriptor < 0){
-        printf("Unable to open port\n");
-        return -1;
-    }
 
     int input = 0;
     do{
@@ -54,18 +50,20 @@ int main(int argc, char** argv) {
         }
     }while (input != 1);
    
-
-    llopen(app);
+    if (llopen(app) == -1){
+      printf("Unable to open port\n");
+      exit(-1);
+    }
     
     if (app.status == 1) {
-        // llwrite(); // chamar llwrite
+        // llwrite(); // chamar llwrite()
     }else{
         // llread(); // chamar llread()
 
     }
 
     llclose(app);
-
+    close(app.fileDescriptor);
 
     return 0;
 }
