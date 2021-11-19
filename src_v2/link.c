@@ -33,6 +33,8 @@ volatile int STOP=FALSE;
 // declaracao de variaveis globais
 char SET[5] = {0x7E,0x03,0x03,0x00,0x7E};
 char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
+char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
+
 int flag=0, conta=1;
 
 // declaracao de structs
@@ -43,6 +45,11 @@ struct termios oldtio;
 void signal_handler();
 
 int llopen(applicationLayer app){
+
+    if (app.fileDescriptor < 0){
+        return -1;
+    }
+
     driver_layer.baudRate = BAUDRATE;
     driver_layer.timeout = ALARM_TIMEOUT;
     driver_layer.numTransmissions = RETRANS_MAX;
@@ -118,10 +125,11 @@ int llopen(applicationLayer app){
     }
 
 
-    return 0;
+    return app.fileDescriptor;
 }
 
 int llclose(applicationLayer app) {
+    sleep(1);
     if (tcsetattr(app.fileDescriptor, TCSANOW, &oldtio) == -1) {
         perror("tcsetattr");
         return -1;
@@ -129,7 +137,7 @@ int llclose(applicationLayer app) {
     return 0;
 }
 
-int llwrite(int fd, char * buffer, int length){
+int llwrite(int fd, char* buffer, int length){
     return 0;
 }
 
