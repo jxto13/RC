@@ -1,0 +1,6 @@
+T -> 0 se for o tamanho do ficheiro, 1 se for o nome do ficheiro 
+L -> Tamanho necessário para guardar V em bytes 
+(L1, para o tamanho do ficheiro , L2 para o nome)
+V -> Tamanho do ficheiro gif em V1 e nome do ficheiro em V2
+
+
