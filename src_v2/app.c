@@ -55,10 +55,61 @@ int main(int argc, char** argv) {
       exit(-1);
     }
     
-    if (app.status == 1) {
+    if (app.status == 1) { // transmitter 
+      FILE *fp;
+      int length;
+      unsigned char* file_data;
+
+      char* fileName = "pinguim.gif";
+      fp = fopen(fileName, "rb");
+      if(fp != NULL){
+        fseek(fp, 0, SEEK_END);         
+        length = ftell(fp);
+        file_data = malloc(sizeof(char*)*length);   
+        rewind(fp);             
+        fread(file_data, length, 1, fp);
+      } else{
+        printf("Failed to open file '%s'",fileName);
+      }
+      
+
+      int res = 0;
+      int counter = 0;
+      for (int i = 0; i < 10; i++) {
+        if((res = write(app.fileDescriptor,&file_data,1)) < 0){
+            printf("Error occurred at write() function.\n Exiting! \n");
+            return -1;
+        }
+        counter += res;
+
+        // printf("%x\n",file_data[i]);
+      }
+      printf("%d\n",counter);
+      // sleep(10);
+      fclose(fp);
+
+
+    
         // llwrite(); // chamar llwrite()
-    }else{
+    }else{ // reciever
+    FILE *fp;
+      char* fileName = "pinguim_transmitted.gif";
+      fp = fopen(fileName, "w");
+
+      int res = 0;
+
+      int counter = 0;
+      unsigned char buffer[255] ;
+      while((res = read(app.fileDescriptor,buffer,1)) != 0){
+          // printf("%d\n",res);
+          fwrite(buffer,1,sizeof(buffer),fp);
+          counter += res;
+          memset(buffer,0,255);
+      }
         // llread(); // chamar llread()
+      printf("%d\n",counter);
+
+      fclose(fp);
 
     }
 
