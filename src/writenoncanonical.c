@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
 
       if((res = read(fd,buf,255)) > 0){
         if(state_conf_UA(buf,res) == 1){
+          alarm(0);
           break;
         } 
       }
