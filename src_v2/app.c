@@ -15,13 +15,17 @@
 
 int main(int argc, char** argv) {
 
-    if (argc < 2) {
+    if (argc != 2) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
     applicationLayer app;
 
     app.fileDescriptor = open(argv[1], O_RDWR | O_NOCTTY);
+    if(app.fileDescriptor == -1){
+      printf("Failed to open serialport\n");
+      return -1;
+    }
 
     int input = 0;
     do{
@@ -56,11 +60,12 @@ int main(int argc, char** argv) {
     }
     
     if (app.status == 1) { // transmitter 
-      FILE *fp;
+      /* FILE *fp;
       int length;
       unsigned char* file_data;
 
       char* fileName = "pinguim.gif";
+
       fp = fopen(fileName, "rb");
       if(fp != NULL){
         fseek(fp, 0, SEEK_END);         
@@ -75,12 +80,15 @@ int main(int argc, char** argv) {
 
       int res = 0;
       int counter = 0;
-      for (int i = 0; i < 10; i++) {
-        if((res = write(app.fileDescriptor,&file_data,1)) < 0){
-            printf("Error occurred at write() function.\n Exiting! \n");
-            return -1;
-        }
-        counter += res;
+     
+      
+      for (int i = 0; i < length; i++) {
+        // if((res = write(app.fileDescriptor,&(file_data[i]),5)) < 0){
+        //     printf("Error occurred at write() function.\n Exiting! \n");
+        //     return -1;
+        // }
+        // counter += res;
+        counter += llwrite(app,&(file_data[i]),1);
 
         // printf("%x\n",file_data[i]);
       }
@@ -88,28 +96,39 @@ int main(int argc, char** argv) {
       // sleep(10);
       fclose(fp);
 
+ */
+      unsigned char* test = "rest";
+       llwrite(app,test,5); // chamar llwrite()
 
-    
-        // llwrite(); // chamar llwrite()
     }else{ // reciever
-    FILE *fp;
+      unsigned char* recieved;
+      llread(app,recieved);
+      printf("%s\n",recieved);
+    /* FILE *fp;
       char* fileName = "pinguim_transmitted.gif";
       fp = fopen(fileName, "w");
 
       int res = 0;
 
+      unsigned char buffer ;
       int counter = 0;
-      unsigned char buffer[255] ;
-      while((res = read(app.fileDescriptor,buffer,1)) != 0){
-          // printf("%d\n",res);
-          fwrite(buffer,1,sizeof(buffer),fp);
-          counter += res;
-          memset(buffer,0,255);
+      while (counter != 10968) {
+        
+        counter += llread(app,&buffer);
+        fwrite(buffer,1,1,fp);
+
       }
-        // llread(); // chamar llread()
+      
+      // while((res = read(app.fileDescriptor,buffer,5)) != 0){
+      //     fwrite(buffer,5,1,fp);
+      //     printf("%d\n",res);
+      //     counter += res;
+      //     // memset(buffer,0,255);
+      // }
+      //   // llread(); // chamar llread()
       printf("%d\n",counter);
 
-      fclose(fp);
+      fclose(fp); */
 
     }
 

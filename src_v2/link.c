@@ -19,8 +19,8 @@
 #define ALARM_TIMEOUT 3
 #define RETRANS_MAX 3
 
-#define VTIME_VALUE 1
-#define VMIN_VALUE 0
+#define VTIME_VALUE 1 // VTIME
+#define VMIN_VALUE 0 // VMIN
 
 #define TRANSMITTER 1
 #define RECEIVER 0
@@ -33,7 +33,7 @@ volatile int STOP=FALSE;
 // declaracao de variaveis globais
 unsigned char SET[5] = {0x7E,0x03,0x03,0x00,0x7E};
 unsigned char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
-unsigned char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
+// unsigned char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
 
 int flag=0, conta=1;
 
@@ -43,6 +43,8 @@ struct termios oldtio;
 
 // declaracao de funcoes
 void signal_handler();
+
+///meter llwrite dentro do llopen
 
 int llopen(applicationLayer app){
 
@@ -106,10 +108,18 @@ int llopen(applicationLayer app){
                     break;
                 } 
             } 
+            if(res < 0){ 
+                printf("Error occurred at read() function.\n Exiting! \n");
+                exit(1);
+            }
         }
     }else{
         while (STOP==FALSE) {
             if((res = read(app.fileDescriptor,buf,255)) > 0){
+                if(res < 0){ 
+                    printf("Error occurred at read() function.\n Exiting! \n");
+                    exit(1);
+                }
                 if(state_conf_SET(buf,res) == 1){
                     break;
                 } 
@@ -137,10 +147,30 @@ int llclose(applicationLayer app) {
     return 0;
 }
 
-int llwrite(int fd, char* buffer, int length){
-    return 0;
+int llwrite(applicationLayer app, unsigned char* buffer, int length){
+    int res;
+    if((res = write(app.fileDescriptor,buffer,length)) < 0){ 
+            printf("Error occurred at write() function.\n Exiting! \n");
+            return -1;
+    }
+    return res;
 }
+int llread(applicationLayer app,unsigned char * buffer){
 
+    int res, counter = 0;
+    while (STOP==FALSE) {
+        if((res = read(app.fileDescriptor,buffer,1)) < 0){
+            printf("Error occurred at read() function.\n Exiting! \n");
+            return -1;
+        }
+        counter += res;
+        if (res==0) STOP=TRUE;
+    }
+
+    return counter;
+
+
+}
 void signal_handler() {
     printf("No valid message recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
 	flag=1;
