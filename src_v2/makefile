@@ -3,7 +3,7 @@ driver:
 	gcc -Wall app.c link.c stateM_lib.c -o main 
 
 run_emissor:
-	@./main /dev/ttyS10
+	@./main /dev/ttyS10 
 
 run_reader:
 	@./main /dev/ttyS11

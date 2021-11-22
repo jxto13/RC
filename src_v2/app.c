@@ -12,16 +12,40 @@
 #include "app.h"
 #include "link.h"
 
+int openFile(FILE** fp, char* fileName){
+
+  int length;
+  // unsigned char* file_data;
+
+
+  *fp = fopen(fileName, "rb");
+  if(*fp != NULL){
+    fseek(*fp, 0, SEEK_END);         
+    length = ftell(*fp);
+    rewind(*fp);             
+
+    // file_data = malloc(sizeof(char*)*length);   
+    // rewind(fp);             
+    // fread(file_data, length, 1, fp);
+  } else{
+    printf("Failed to open file '%s'",fileName);
+  }
+  return length;
+}
 
 int main(int argc, char** argv) {
 
-    if (argc < 2) {
+    if (argc != 2) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
     applicationLayer app;
 
     app.fileDescriptor = open(argv[1], O_RDWR | O_NOCTTY);
+    if(app.fileDescriptor == -1){
+      printf("Failed to open serialport\n");
+      return -1;
+    }
 
     int input = 0;
     do{
@@ -56,31 +80,23 @@ int main(int argc, char** argv) {
     }
     
     if (app.status == 1) { // transmitter 
+      
       FILE *fp;
-      int length;
+      char* fileName = "pinguim.gif";
+      int length = openFile(&fp, fileName);
+
       unsigned char* file_data;
 
-      char* fileName = "pinguim.gif";
-      fp = fopen(fileName, "rb");
-      if(fp != NULL){
-        fseek(fp, 0, SEEK_END);         
-        length = ftell(fp);
-        file_data = malloc(sizeof(char*)*length);   
-        rewind(fp);             
-        fread(file_data, length, 1, fp);
-      } else{
-        printf("Failed to open file '%s'",fileName);
-      }
-      
-
-      int res = 0;
+      file_data = malloc(sizeof(char*)*length);   
+      rewind(fp);             
+      fread(file_data, length, 1, fp);
+      // int res = 0;
       int counter = 0;
-      for (int i = 0; i < 10; i++) {
-        if((res = write(app.fileDescriptor,&file_data,1)) < 0){
-            printf("Error occurred at write() function.\n Exiting! \n");
-            return -1;
-        }
-        counter += res;
+     
+      
+      for (int i = 0; i < length; i++ ) {
+
+        counter += llwrite(app,&(file_data[i]),1);
 
         // printf("%x\n",file_data[i]);
       }
@@ -88,28 +104,26 @@ int main(int argc, char** argv) {
       // sleep(10);
       fclose(fp);
 
-
-    
-        // llwrite(); // chamar llwrite()
     }else{ // reciever
-    FILE *fp;
+      FILE *fp;
       char* fileName = "pinguim_transmitted.gif";
       fp = fopen(fileName, "w");
 
-      int res = 0;
-
       int counter = 0;
-      unsigned char buffer[255] ;
-      while((res = read(app.fileDescriptor,buffer,1)) != 0){
-          // printf("%d\n",res);
-          fwrite(buffer,1,sizeof(buffer),fp);
-          counter += res;
-          memset(buffer,0,255);
-      }
-        // llread(); // chamar llread()
-      printf("%d\n",counter);
+      unsigned char* recieved = malloc(0);
 
-      fclose(fp);
+      // int test = llread(app,&recieved);
+      // fwrite(recieved,1,test,fp);
+
+      while (counter != 10968) {
+
+        counter += llread(app,&recieved);
+
+      }
+
+      fwrite(recieved,1,counter,fp);
+
+      fclose(fp); 
 
     }
 

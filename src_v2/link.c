@@ -19,8 +19,8 @@
 #define ALARM_TIMEOUT 3
 #define RETRANS_MAX 3
 
-#define VTIME_VALUE 1
-#define VMIN_VALUE 0
+#define VTIME_VALUE 1 // VTIME
+#define VMIN_VALUE 0 // VMIN
 
 #define TRANSMITTER 1
 #define RECEIVER 0
@@ -33,7 +33,7 @@ volatile int STOP=FALSE;
 // declaracao de variaveis globais
 unsigned char SET[5] = {0x7E,0x03,0x03,0x00,0x7E};
 unsigned char UA[5] = {0x7E,0x03,0x07,0x04,0x7E};
-unsigned char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
+// unsigned char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
 
 int flag=0, conta=1;
 
@@ -43,6 +43,8 @@ struct termios oldtio;
 
 // declaracao de funcoes
 void signal_handler();
+
+///meter llwrite dentro do llopen
 
 int llopen(applicationLayer app){
 
@@ -56,7 +58,7 @@ int llopen(applicationLayer app){
 
     struct termios newtio;
     int res; // variavel auxiliar e temporaria
-    unsigned char buf[MAX_SIZE]; // MAX_SIZE 255
+    unsigned char buf[5]; // MAX_SIZE 5 porque so existe trama de UA e SET no llopen
 
     if ( tcgetattr(app.fileDescriptor,&oldtio) == -1) { /* save current port settings */
       perror("tcgetattr");
@@ -100,16 +102,24 @@ int llopen(applicationLayer app){
                 }
             }
 
-            if((res = read(app.fileDescriptor,buf,255)) > 0){
+            if((res = read(app.fileDescriptor,buf,5)) > 0){
                 if(state_conf_UA(buf,res) == 1){
                     alarm(0);
                     break;
                 } 
             } 
+            if(res < 0){ 
+                printf("Error occurred at read() function.\n Exiting! \n");
+                exit(1);
+            }
         }
     }else{
         while (STOP==FALSE) {
-            if((res = read(app.fileDescriptor,buf,255)) > 0){
+            if((res = read(app.fileDescriptor,buf,5)) > 0){
+                if(res < 0){ 
+                    printf("Error occurred at read() function.\n Exiting! \n");
+                    exit(1);
+                }
                 if(state_conf_SET(buf,res) == 1){
                     break;
                 } 
@@ -137,10 +147,53 @@ int llclose(applicationLayer app) {
     return 0;
 }
 
-int llwrite(int fd, char* buffer, int length){
-    return 0;
+int llwrite(applicationLayer app, unsigned char* buffer, int length){
+    int res;
+    if((res = write(app.fileDescriptor,buffer,length)) < 0){ 
+        printf("Error occurred at write() function.\n Exiting! \n");
+        return -1;
+    }
+    return res;
 }
 
+
+int llread(applicationLayer app, unsigned char ** buffer){
+    int size_to_read = 3;
+    unsigned char temp[size_to_read];
+    unsigned char * ans = malloc(size_to_read);
+
+    int res, counter = 0;
+    int size_of_ans = 0;
+  
+    while (STOP==FALSE) {
+        if((res = read(app.fileDescriptor,temp,size_to_read)) > 0){
+
+            memcpy(ans+size_of_ans,temp,res);
+            
+            size_of_ans+=res;
+            counter += res;
+            
+            if(realloc(ans,size_of_ans+res) == NULL){
+                printf("realloc failed\n");
+                exit(1); 
+            }
+            // for (int i = 0; i < res; i++){
+            //     printf("%d - %x\n",i,temp[i]);
+            // }
+        } else if (res < 0){
+            printf("Error occurred at read() function.\n Exiting! \n");
+            return -1;
+        } else{
+            STOP=TRUE;
+        }
+    }
+    if(realloc(*buffer,size_of_ans+size_to_read) == NULL){
+        printf("realloc failed\n");
+        return -1; 
+    }
+    *buffer = ans;
+    return counter;
+}
 void signal_handler() {
     printf("No valid message recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
 	flag=1;
