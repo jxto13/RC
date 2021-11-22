@@ -58,7 +58,7 @@ int llopen(applicationLayer app){
 
     struct termios newtio;
     int res; // variavel auxiliar e temporaria
-    unsigned char buf[MAX_SIZE]; // MAX_SIZE 255
+    unsigned char buf[5]; // MAX_SIZE 5 porque so existe trama de UA e SET no llopen
 
     if ( tcgetattr(app.fileDescriptor,&oldtio) == -1) { /* save current port settings */
       perror("tcgetattr");
@@ -102,7 +102,7 @@ int llopen(applicationLayer app){
                 }
             }
 
-            if((res = read(app.fileDescriptor,buf,255)) > 0){
+            if((res = read(app.fileDescriptor,buf,5)) > 0){
                 if(state_conf_UA(buf,res) == 1){
                     alarm(0);
                     break;
@@ -115,7 +115,7 @@ int llopen(applicationLayer app){
         }
     }else{
         while (STOP==FALSE) {
-            if((res = read(app.fileDescriptor,buf,255)) > 0){
+            if((res = read(app.fileDescriptor,buf,5)) > 0){
                 if(res < 0){ 
                     printf("Error occurred at read() function.\n Exiting! \n");
                     exit(1);
@@ -150,26 +150,49 @@ int llclose(applicationLayer app) {
 int llwrite(applicationLayer app, unsigned char* buffer, int length){
     int res;
     if((res = write(app.fileDescriptor,buffer,length)) < 0){ 
-            printf("Error occurred at write() function.\n Exiting! \n");
-            return -1;
+        printf("Error occurred at write() function.\n Exiting! \n");
+        return -1;
     }
     return res;
 }
-int llread(applicationLayer app,unsigned char * buffer){
+
+
+int llread(applicationLayer app, unsigned char ** buffer){
+    int size_to_read = 3;
+    unsigned char temp[size_to_read];
+    unsigned char * ans = malloc(size_to_read);
 
     int res, counter = 0;
+    int size_of_ans = 0;
+  
     while (STOP==FALSE) {
-        if((res = read(app.fileDescriptor,buffer,1)) < 0){
+        if((res = read(app.fileDescriptor,temp,size_to_read)) > 0){
+
+            memcpy(ans+size_of_ans,temp,res);
+            
+            size_of_ans+=res;
+            counter += res;
+            
+            if(realloc(ans,size_of_ans+res) == NULL){
+                printf("realloc failed\n");
+                exit(1); 
+            }
+            // for (int i = 0; i < res; i++){
+            //     printf("%d - %x\n",i,temp[i]);
+            // }
+        } else if (res < 0){
             printf("Error occurred at read() function.\n Exiting! \n");
             return -1;
+        } else{
+            STOP=TRUE;
         }
-        counter += res;
-        if (res==0) STOP=TRUE;
     }
-
+    if(realloc(*buffer,size_of_ans+size_to_read) == NULL){
+        printf("realloc failed\n");
+        return -1; 
+    }
+    *buffer = ans;
     return counter;
-
-
 }
 void signal_handler() {
     printf("No valid message recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);

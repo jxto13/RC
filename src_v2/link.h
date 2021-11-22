@@ -14,5 +14,5 @@ typedef struct linkLayer{
 int llopen(applicationLayer app);
 int llclose(applicationLayer app);
 int llwrite(applicationLayer app, unsigned char * buffer, int length);
-int llread(applicationLayer app, unsigned char * buffer);
+int llread(applicationLayer app, unsigned char ** buffer);
 void signal_handler();
