@@ -13,19 +13,41 @@
 #include "link.h"
 #include "byteStuffing.h"
 
-#define DATASIZE 50
+#define DATASIZE 512 //Testing data size
 
 int package_N = 0;
 
 unsigned char* data_package_gen(unsigned char* data, int length){
-  int cont = 0;
   unsigned char* data_package = malloc(DATASIZE + 4);
-  
-  
+  memcpy(data_package,(unsigned char[]) {0x01},1);
+  memcpy(data_package+1,(unsigned char[]) {DATASIZE%256},1);
+  memcpy(data_package+2,(unsigned char[]) {DATASIZE/256},1);
+  if(length < 256){
+    memcpy(data_package+3,(unsigned char[]) {length},1);
+    memcpy(data_package+4,data,length);
+  } 
+  else{
+    memcpy(data_package+3,(unsigned char[]) {0x00},1);
+    memcpy(data_package+4,data,DATASIZE);
+  } 
+  return data_package;
 }
 
-void control_data_package(){ //to be made..
-
+unsigned char* control_data_package(unsigned char* file_name ,int file_length, int control){
+  unsigned char* control_data_package = malloc(getSize_Uchar(file_name) + sizeof(file_length) + 5);
+  if(control == 1){ //START
+    memcpy(control_data_package,(unsigned char[]) {0x02},1); // C
+  }
+  else{ //END
+    memcpy(control_data_package,(unsigned char[]) {0x03},1); // C
+  }
+  memcpy(control_data_package+1,(unsigned char[]) {0x00},1); // T1
+  memcpy(control_data_package+2,(unsigned char[]) {sizeof(file_length)},1); // L1
+  memcpy(control_data_package+3,(unsigned char[]) {file_length},sizeof(file_length)); // V1
+  memcpy(control_data_package+4,(unsigned char[]) {0x01},1); // T2S
+  memcpy(control_data_package+5,(unsigned char[]) {getSize_Uchar(file_name)},1); // L2
+  memcpy(control_data_package+6,file_name,getSize_Uchar(file_name)); // V2
+  return control_data_package;
 }
 
 int openFile(FILE** fp, char* fileName){
@@ -98,7 +120,7 @@ int main(int argc, char** argv) {
     if (app.status == 1) { // transmitter 
       
       FILE *fp;
-      char* fileName = "pinguim.gif";
+      unsigned char* fileName = "pinguim.gif";
       int length = openFile(&fp, fileName);
 
       // unsigned char* file_data;
