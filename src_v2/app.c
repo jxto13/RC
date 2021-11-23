@@ -15,6 +15,19 @@
 
 #define DATASIZE 50
 
+int package_N = 0;
+
+unsigned char* data_package_gen(unsigned char* data, int length){
+  int cont = 0;
+  unsigned char* data_package = malloc(DATASIZE + 4);
+  
+  
+}
+
+void control_data_package(){ //to be made..
+
+}
+
 int openFile(FILE** fp, char* fileName){
 
   int length;
@@ -91,7 +104,7 @@ int main(int argc, char** argv) {
       // unsigned char* file_data;
 
       // file_data = malloc(sizeof(char*)*length);   
-      rewind(fp);             
+      //rewind(fp);             
       // fread(file_data, length, 1, fp);
       // int res = 0;
       int counter = 0;
