@@ -11,6 +11,9 @@
 #include "stateM_lib.h"
 #include "app.h"
 #include "link.h"
+#include "byteStuffing.h"
+
+#define DATASIZE 50
 
 int openFile(FILE** fp, char* fileName){
 
@@ -85,22 +88,33 @@ int main(int argc, char** argv) {
       char* fileName = "pinguim.gif";
       int length = openFile(&fp, fileName);
 
-      unsigned char* file_data;
+      // unsigned char* file_data;
 
-      file_data = malloc(sizeof(char*)*length);   
+      // file_data = malloc(sizeof(char*)*length);   
       rewind(fp);             
-      fread(file_data, length, 1, fp);
+      // fread(file_data, length, 1, fp);
       // int res = 0;
       int counter = 0;
-     
+      int bytesToRead = DATASIZE, bytesRead;
+      unsigned char* file_data = malloc(bytesToRead);
+
+      for (int i = 0; i < length; i+=bytesToRead) {
+        // fread(file_data, 1, 15, fp);
+        bytesRead = fread(file_data, 1, bytesToRead, fp);
+
+        int stuff_data_size = 0;
+        unsigned char* stuff_data = byte_stuff(file_data,bytesToRead,&stuff_data_size);
+        
+        llwrite(app,stuff_data,stuff_data_size);
+    }
       
-      for (int i = 0; i < length; i++ ) {
+      // for (int i = 0; i < 15; i+=5 ) {
+      //   unsigned char* stuff_data = byte_stuff(&(file_data[i]));
+      //   counter += llwrite(app,&(file_data[i]),5);
 
-        counter += llwrite(app,&(file_data[i]),1);
-
-        // printf("%x\n",file_data[i]);
-      }
-      printf("%d\n",counter);
+      //   // printf("%x\n",file_data[i]);
+      // }
+      // printf("%d\n",counter);
       // sleep(10);
       fclose(fp);
 
@@ -111,17 +125,21 @@ int main(int argc, char** argv) {
 
       int counter = 0;
       unsigned char* recieved = malloc(0);
-
+      // unsigned char* destuff_data;
       // int test = llread(app,&recieved);
       // fwrite(recieved,1,test,fp);
 
-      while (counter != 10968) {
-
-        counter += llread(app,&recieved);
-
+      int destuff_data_size = 0, current = 0;
+      while (counter != 11000) {
+        current = llread(app,&recieved);
+        // printf("%d\n",current);
+        unsigned char* destuff_data = byte_destuff(recieved,current,&destuff_data_size);
+        counter += destuff_data_size;
+        fwrite(destuff_data,1,destuff_data_size,fp);
+        // printf("%d\n",counter);
       }
+      
 
-      fwrite(recieved,1,counter,fp);
 
       fclose(fp); 
 
