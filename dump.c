@@ -31,20 +31,29 @@
     }
     return 0;
 } */
-
-void printer(unsigned char * src){
-    unsigned char* start = src;
-        
-        while(*start != NULL){
-                printf("%x ",*start);
-                if(start == 0x7d) printf("--------\n");
-                start++;
-
-            }
-            printf("\n");
+int getSize_Uchar(unsigned char* src){
+    unsigned char* pointer = src;
+    int counter = 0;
+    while(*pointer != '\0'){
+        counter++;
+        pointer++;
+    }
+    return counter;
 }
+// void printer(unsigned char * src){
+//     unsigned char* start = src;
+        
+//         while(*start != NULL){
+//                 printf("%x ",*start);
+//                 if(start == 0x7d) printf("--------\n");
+//                 start++;
+
+//             }
+//             printf("\n");
+// }
 int main(){ 
 /* 
+
 
     unsigned char* str1 = (unsigned char*) 0x2F;
     unsigned char* str2 = (unsigned char*) 0x2F;
@@ -98,114 +107,116 @@ int main(){
 
     // printf("%ld\n",sizeof(unsigned char *));
      */
-    FILE *fp, *dest;
-    int length;
+    // FILE *fp, *dest;
+    // int length;
 
+    unsigned char* input = (unsigned char*)"pinguim.gif";   
+    printf("%d\n",getSize_Uchar(input));
 
-    fp = fopen("pinguim.gif", "rb");   
-    dest = fopen("pinguim_transmitted.gif", "w");    
+    // fp = fopen("pinguim.gif", "rb");   
+    // dest = fopen("pinguim_transmitted.gif", "w");    
 
-    fseek(fp, 0, SEEK_END);         
-    length = ftell(fp);           
-    rewind(fp);             
+    // fseek(fp, 0, SEEK_END);         
+    // length = ftell(fp);           
+    // rewind(fp);             
 
-    int bytesToRead = 15;
-    unsigned char* file_data = malloc(bytesToRead);
+    // int bytesToRead = 15;
+    // unsigned char* file_data = malloc(bytesToRead);
 
-    int bytesRead;
+    // int bytesRead;
 
-    /* unsigned char test[9] = {0xA8, 0x9A, 0xE9, 0xB7, 0x7E, 0x9F, 0x77, 0x9F, 0x5D};
-        int stuff_data_size = 0;
+    // /* unsigned char test[9] = {0xA8, 0x9A, 0xE9, 0xB7, 0x7E, 0x9F, 0x77, 0x9F, 0x5D};
+    //     int stuff_data_size = 0;
 
-        unsigned char* stuff_data = byte_stuff(test,9,&stuff_data_size);
-        printf("Stuff data\n");
-        printer(stuff_data);
+    //     unsigned char* stuff_data = byte_stuff(test,9,&stuff_data_size);
+    //     printf("Stuff data\n");
+    //     printer(stuff_data);
 
-        int destuff_data_size = 0;
-        unsigned char* destuff_data = byte_destuff(stuff_data,stuff_data_size,&destuff_data_size);
+    //     int destuff_data_size = 0;
+    //     unsigned char* destuff_data = byte_destuff(stuff_data,stuff_data_size,&destuff_data_size);
         
-        printf("Destuff data\n");
-        printer(destuff_data); */
-     for (int i = 0; i < length; i+=bytesToRead) {
-        // fread(file_data, 1, 15, fp);
-        bytesRead = fread(file_data, 1, bytesToRead, fp);
-        // if(i > 10900) printf("%d bytesRead\n",bytesRead);
-        int stuff_data_size = 0;
-        unsigned char* stuff_data = byte_stuff(file_data,bytesToRead,&stuff_data_size);
+    //     printf("Destuff data\n");
+    //     printer(destuff_data); */
+    //  for (int i = 0; i < length; i+=bytesToRead) {
+    //     // fread(file_data, 1, 15, fp);
+    //     bytesRead = fread(file_data, 1, bytesToRead, fp);
+    //     // if(i > 10900) printf("%d bytesRead\n",bytesRead);
+    //     int stuff_data_size = 0;
+    //     unsigned char* stuff_data = byte_stuff(file_data,bytesToRead,&stuff_data_size);
 
-        // printf("bytesRead %d\n",bytesRead);
-        // printf("stuff_data_size %d\n",stuff_data_size);
+    //     // printf("bytesRead %d\n",bytesRead);
+    //     // printf("stuff_data_size %d\n",stuff_data_size);
 
-        // printf("Stuff data\n");
-        // printer(stuff_data);
+    //     // printf("Stuff data\n");
+    //     // printer(stuff_data);
        
-        for (int i = 0; i < stuff_data_size; i++){
-            // if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
+    //     for (int i = 0; i < stuff_data_size; i++){
+    //         // if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
 
-            // printf("%x ",stuff_data[i]);
-        }
-        
-        // printf("\n");
-
-        int destuff_data_size = 0;
-        unsigned char* destuff_data = byte_destuff(stuff_data,stuff_data_size,&destuff_data_size);
-        
-        // printf("Destuff data\n");
-        // printer(destuff_data);
-        for (int i = 0; i < destuff_data_size; i++){
-            // if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
-            // if(destuff_data[i] == 0x7D) printf("---------");
-
-            // printf("%x ",destuff_data[i]);
-        }
-        // printf("\n");
-        if(destuff_data_size != stuff_data_size){
-            printf("%d -- ",i);
-            printf("%d destuff_data_size | %d stuff_data_size\n",destuff_data_size,stuff_data_size);
-        }
-        // comperator(stuff_data,destuff_data,stuff_data_size);
-        fwrite(destuff_data,1,destuff_data_size,dest);
-
-        // for (int i = 0; i < sizeof(stuff_data); i++){
-        //     printf("%x ",*start);
-        //     *start++;
-        // }
-        // printf("\n");
-        
-        
-    }
-     
-    // while ((bytesRead = fread(file_data, 1, 8, fp)) > 0) {
-    //     unsigned char* stuff_data = byte_stuff(&(file_data));
-
-    //     // if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
-
-    //     unsigned char* indexTask;
-	// 	// LIST_TASK *newCar = malloc(sizeof(LIST_TASK));
-	// 	for (indexTask = stuff_data; indexTask != '\0'; indexTask++){
-    //         printf("%x ",*file_data);
-
+    //         // printf("%x ",stuff_data[i]);
     //     }
         
-    //     printf("\n");
+    //     // printf("\n");
 
-  
-    //     // for (int i = 0; i < 8; i++){
-    //     //     printf("%x ",file_data[i]);
+    //     int destuff_data_size = 0;
+    //     unsigned char* destuff_data = byte_destuff(stuff_data,stuff_data_size,&destuff_data_size);
+        
+    //     // printf("Destuff data\n");
+    //     // printer(destuff_data);
+    //     for (int i = 0; i < destuff_data_size; i++){
+    //         // if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
+    //         // if(destuff_data[i] == 0x7D) printf("---------");
+
+    //         // printf("%x ",destuff_data[i]);
+    //     }
+    //     // printf("\n");
+    //     if(destuff_data_size != stuff_data_size){
+    //         printf("%d -- ",i);
+    //         printf("%d destuff_data_size | %d stuff_data_size\n",destuff_data_size,stuff_data_size);
+    //     }
+    //     // comperator(stuff_data,destuff_data,stuff_data_size);
+    //     fwrite(destuff_data,1,destuff_data_size,dest);
+
+    //     // for (int i = 0; i < sizeof(stuff_data); i++){
+    //     //     printf("%x ",*start);
+    //     //     *start++;
     //     // }
     //     // printf("\n");
+        
+        
     // }
+     
+    // // while ((bytesRead = fread(file_data, 1, 8, fp)) > 0) {
+    // //     unsigned char* stuff_data = byte_stuff(&(file_data));
+
+    // //     // if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
+
+    // //     unsigned char* indexTask;
+	// // 	// LIST_TASK *newCar = malloc(sizeof(LIST_TASK));
+	// // 	for (indexTask = stuff_data; indexTask != '\0'; indexTask++){
+    // //         printf("%x ",*file_data);
+
+    // //     }
+        
+    // //     printf("\n");
+
   
-    // fread(file_data, length, 1, fp);
+    // //     // for (int i = 0; i < 8; i++){
+    // //     //     printf("%x ",file_data[i]);
+    // //     // }
+    // //     // printf("\n");
+    // // }
+  
+    // // fread(file_data, length, 1, fp);
  
-    // // fgets(file_data,length,fp);
-    // for (int i = 0; i < length; i++) {
-    //     // fwrite(&(file_data[i]),1,1,dest);
-    //     unsigned char* stuff_data = byte_stuff(&(file_data[i]));
-    //     if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
-    // }
-    fclose(fp);
-    fclose(dest);
+    // // // fgets(file_data,length,fp);
+    // // for (int i = 0; i < length; i++) {
+    // //     // fwrite(&(file_data[i]),1,1,dest);
+    // //     unsigned char* stuff_data = byte_stuff(&(file_data[i]));
+    // //     if(file_data[i] == 0x7E) printf("%d - %x %x\n",i,*stuff_data, *stuff_data+1);
+    // // }
+    // fclose(fp);
+    // fclose(dest);
 
     return 0;
 }
