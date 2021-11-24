@@ -1,16 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define DATASIZE 50
 
-int converter(int k){
-  return (unsigned char) (k%256);
+double log2(double x){
+  return log(x) / log(2);
 }
 
+int n_bytes(int data){
+  return (int) ceil((log2(data)/8.0));
+}
+
+
 int main(){
-    unsigned char* data_package = malloc(DATASIZE + 4);
-    memcpy(data_package,(unsigned char[]) {converter(100)},1);
-    printf("%c\n",data_package[0]);
+    printf("%d\n",n_bytes(65000));
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
 
 #include "stateM_lib.h"
 #include "app.h"
@@ -16,6 +17,24 @@
 #define DATASIZE 512 //Testing data size
 
 int package_N = 0;
+
+double log2(double x){
+  return log(x) / log(2);
+}
+
+int n_bytes(int data){
+  return (int) ceil((log2(data)/8.0));
+}
+
+int getSize_Uchar(unsigned char* src){
+    unsigned char* pointer = src;
+    int counter = 0;
+    while(*pointer != '\0'){
+        counter++;
+        pointer++;
+    }
+    return counter;
+}
 
 unsigned char* data_package_gen(unsigned char* data, int length){
   unsigned char* data_package = malloc(DATASIZE + 4);
@@ -34,7 +53,7 @@ unsigned char* data_package_gen(unsigned char* data, int length){
 }
 
 unsigned char* control_data_package(unsigned char* file_name ,int file_length, int control){
-  unsigned char* control_data_package = malloc(getSize_Uchar(file_name) + sizeof(file_length) + 5);
+  unsigned char* control_data_package = malloc(getSize_Uchar(file_name) + n_bytes(file_length) + 5);
   if(control == 1){ //START
     memcpy(control_data_package,(unsigned char[]) {0x02},1); // C
   }
@@ -42,11 +61,11 @@ unsigned char* control_data_package(unsigned char* file_name ,int file_length, i
     memcpy(control_data_package,(unsigned char[]) {0x03},1); // C
   }
   memcpy(control_data_package+1,(unsigned char[]) {0x00},1); // T1
-  memcpy(control_data_package+2,(unsigned char[]) {sizeof(file_length)},1); // L1
-  memcpy(control_data_package+3,(unsigned char[]) {file_length},sizeof(file_length)); // V1
-  memcpy(control_data_package+4,(unsigned char[]) {0x01},1); // T2S
-  memcpy(control_data_package+5,(unsigned char[]) {getSize_Uchar(file_name)},1); // L2
-  memcpy(control_data_package+6,file_name,getSize_Uchar(file_name)); // V2
+  memcpy(control_data_package+2,(unsigned char[]) {n_bytes(file_length)},1); // L1
+  memcpy(control_data_package+3,(unsigned char[]) {file_length},n_bytes(file_length)); // V1
+  memcpy(control_data_package+n_bytes(file_length),(unsigned char[]) {0x01},1); // T2
+  memcpy(control_data_package+n_bytes(file_length)+1,(unsigned char[]) {getSize_Uchar(file_name)},1); // L2
+  memcpy(control_data_package+n_bytes(file_length)+2,file_name,getSize_Uchar(file_name)); // V2
   return control_data_package;
 }
 
