@@ -55,6 +55,6 @@ int main(){
     }
 
     printf("\n");
-
-    printf("%x\n",0x03^0x01);
+  
+    return 0;
 } 

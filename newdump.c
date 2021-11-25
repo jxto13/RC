@@ -74,7 +74,7 @@ char* intToHex(int n, int size){
 }
 
 
-unsigned char* control_data_package(unsigned char* file_name ,int file_length, int control){
+unsigned char* control_data_package(unsigned char* file_name ,int file_length, int control, char extra []){
   int counter = 0, file_length_size = n_bytes(file_length);
   char* file_length_HEX = malloc(file_length);
   file_length_HEX = intToHex(file_length,file_length_size);
@@ -92,7 +92,7 @@ unsigned char* control_data_package(unsigned char* file_name ,int file_length, i
   memcpy(control_data_package+counter++,(unsigned char[]) {file_length_size},1); // L1
 
   char * test = {"\x2a\x8d"};
-  memcpy(control_data_package+counter,test,2); // V1
+  memcpy(control_data_package+counter,extra,2); // V1
 
   memcpy(control_data_package+(counter += file_length_size),(unsigned char[]) {0x01},1); // T2
   memcpy(control_data_package+counter++,(unsigned char[]) {getSize_Uchar(file_name)},1); // L2
@@ -171,7 +171,15 @@ int main(){
     int file_length = 10968;
     int length = getSize_Uchar(fileName) + n_bytes(file_length) + 4;
 
-    unsigned char* test = control_data_package(fileName,file_length,1);
+    char text[] = "10968";
+    char result[5]; // where SIZE is big enough to hold any converted value
+    int val;
+
+    val = (int) strtol(text, NULL, 0); // error checking omitted for brevity
+    sprintf(result, "%x", val);
+    printf("%x\n",val);
+
+    unsigned char* test = control_data_package(fileName,file_length,1,result);
     // printer(test);
     for (int i = 0; i < length; i++) {
         printf("%x ",test[i]);
@@ -180,11 +188,11 @@ int main(){
         printf("\n"); 
 
       
-    int test32 = 10968 ;
-      int* ptest32 = &test32;
 
-      char* p1st8bits = (char*) ptest32;
-      printf("%c\n",p1st8bits);
+    
+
+
+
     // sup = intToHex(file_length,length);
 
     // for (int i = 0; i < length+4; i++){
