@@ -47,7 +47,7 @@ int stateM_data(unsigned char* frame, int data_size, int frame_size){
     while(i < frame_size){
         i++;
 
-        if(BCC1 == 1){
+        if(BCC1 == 1 && BCC2 == 0){
             unsigned char* data_ptr = ptr;
             data_destuffed = malloc(data_size); // +1 para o BCC2
             for (int j = 0; j < data_size; j++)
@@ -123,7 +123,7 @@ int stateM_data(unsigned char* frame, int data_size, int frame_size){
           SE C FOR 0 = 3 */
 
 int main(){
-    unsigned char frame[SIZE] = {0x7E, 0x03, 0x00, 0x03, 0x27, 0x29, 0x31, 0x34, 0x37, 0x1B, 0x7E};
+    unsigned char frame[SIZE] = {0x7E, 0x03, 0x01, 0x02, 0x27, 0x29, 0x31, 0x34, 0x37, 0x1B, 0x7E};
     //unsigned char data[5] = {0x27, 0x29, 0x31, 0x34, 0x37};
     //printf("BCC2 dos dados calculado na main :%x\n", BCC2_calculation(data));    
 
