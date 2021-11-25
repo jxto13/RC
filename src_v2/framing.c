@@ -8,10 +8,9 @@
 int control = 0;
 
 unsigned char BCC2(unsigned char* data){
-    unsigned char* ptr = data;
+    unsigned char* ptr = &data[0];
     unsigned char bcc = (*ptr);
-    ptr++;
-    for(int i=0; i<DATASIZE;i++){
+    for(int i=0; i<5;i++){
       bcc = bcc^(*ptr);
       ptr++;
     }

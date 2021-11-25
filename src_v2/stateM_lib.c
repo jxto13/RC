@@ -20,10 +20,13 @@ int stateM_SET(char state){
 
     case 0x7E: //Se encontrar uma flag
         if(F == 1 && BCC == 1){
-            clear_machine(&A,&C,&BCC,&F);
+            clear_machine();
             return 1; //Se o último foi uma flag
         } 
-        else if(F == 1 && BCC == 0) break;
+        else if(F == 1 && BCC == 0){
+            clear_machine();
+            break;
+        } 
         else F = 1;
         break;
 
@@ -36,6 +39,7 @@ int stateM_SET(char state){
             C = 1;
             break;
         } 
+        else clear_machine();
         break;
 
     case 0x00:
@@ -44,10 +48,11 @@ int stateM_SET(char state){
             BCC = 1;
             break;
         }
+        else clear_machine();
         break;
 
     default:
-        clear_machine(&A,&C,&BCC,&F);
+        clear_machine();
         break;
     }
     return 0;
@@ -63,7 +68,10 @@ int stateM_UA(char state){
             clear_machine();
             return 1; //Se o último foi uma flag
         } 
-        else if(F == 1 && BCC == 0) break;
+        else if(F == 1 && BCC == 0){
+            clear_machine();
+            break;
+        } 
         else F = 1;
         break;
 
@@ -72,6 +80,7 @@ int stateM_UA(char state){
             A = 1;
             break;
         } 
+        else clear_machine();
         break;
 
     case 0x07:
@@ -79,6 +88,7 @@ int stateM_UA(char state){
             C = 1;
             break;
         }
+        else clear_machine();
         break;
 
     case 0x04:
@@ -87,6 +97,7 @@ int stateM_UA(char state){
             BCC = 1;
             break;
         }
+        else clear_machine();
         break;
         
     default:
@@ -99,7 +110,7 @@ int stateM_UA(char state){
 int state_conf_SET(unsigned char buf[], int res){
   for (int i = 0; i < res; i++){
     if (stateM_SET(buf[i]) == 1){
-      printf("SET message recived\n");
+      printf("SET message recieved\n");
       return 1;
     } 
   }
