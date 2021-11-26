@@ -46,12 +46,15 @@ unsigned char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
 // resposta do recetor para o emissor
 unsigned char UA_R[5] = {0x7E,0x03,0x07,0x04,0x7E};
 
-unsigned char RR_0[5] = {0x7E,0x03,0x05,0x06,0x7E};
-unsigned char RR_1[5] = {0x7E,0x03,0x85,0x86,0x7E};
+// comando do recetor para o emissor
+unsigned char RR_0[5] = {0x7E,0x01,0x05,0x06,0x7E};
+unsigned char RR_1[5] = {0x7E,0x01,0x85,0x86,0x7E};
 
 unsigned char REJ_0[5] = {0x7E,0x03,0x01,0x02,0x7E};
 unsigned char REJ_1[5] = {0x7E,0x03,0x81,0x82,0x7E};
 
+// comando do emissor para o recetor de confirmacao no disconnect
+unsigned char UA_R_1[5] = {0x7E,0x01,0x07,0x04,0x7E};
 
 
 int flag=0, conta=1;
@@ -66,6 +69,8 @@ struct termios oldtio;
 // declaracao de funcoes
 void signal_handler();
 void signal_handler_send();
+void signal_handler_disc();
+
 unsigned char BCC2(unsigned char* data, int size);
 unsigned char* framing(unsigned char* data, int size,int* framed_data_size);
 
@@ -185,62 +190,6 @@ int llclose(applicationLayer app) {
     return 0;
 }
 
-int llwrite(applicationLayer app, unsigned char* buffer, int length){
-    int res;
-    if((res = write(app.fileDescriptor,buffer,length)) < 0){ 
-        printf("Error occurred at write() function.\n Exiting! \n");
-        return -1;
-    }
-    return res;
-}
-
-int llread(applicationLayer app, unsigned char ** buffer){
-    int size_to_read = 1;
-    unsigned char temp[size_to_read];
-    unsigned char * ans = malloc(size_to_read);
-
-    int res, counter = 0;
-    int size_of_ans = 0;
-    int stop = 0;
-    while (STOP==FALSE) {
-
-        if((res = read(app.fileDescriptor,temp,size_to_read)) > 0){
-            stop = 1;
-
-            memcpy(ans+size_of_ans,temp,res);
-            
-            size_of_ans+=res;
-            counter += res;
-            // printf("%d size_of_ans+res\n", size_of_ans+res);
-
-            if(realloc(ans,size_of_ans+res) == NULL){
-                printf("realloc failed\n");
-                exit(1); 
-            }
-
-        } else if (res < 0){
-            printf("Error occurred at read() function.\n Exiting! \n");
-            return -1;
-        } 
-
-        if((res == 0 ) ){
-        printf("res = %d - stop = %d - flag = %d\n",res,stop,flag);
-            STOP=TRUE;
-        }
-    }
-    if(counter == 0){
-        free(ans);
-    }else{
-        if(realloc(*buffer,size_of_ans+size_to_read) == NULL){
-            printf("realloc failed\n");
-            return -1; 
-        }
-        *buffer = ans;
-    }
-
-    return counter;
-}
-
 void printer(unsigned char* src, int size){
     for (int i = 0; i < size; i++){
         printf("%02x ",src[i]);
@@ -248,19 +197,60 @@ void printer(unsigned char* src, int size){
     printf("\n");
 }
 
-int send_frame(applicationLayer app, unsigned char* src, int src_size){
+int llclose_writter(applicationLayer app){
+    //resetar a conta caso tenha havido algum timeout
+    conta = 0;
+    //se chegou aqui e que acabou de enviar o ficheiro e a trama de controlo, agr desconectar 
+    (void) signal(SIGALRM, signal_handler_disc);
+
+    //podemos de fazer malloc(5) porque o emissor so ira receber respostas que teem tamanho maximo de 5
+    unsigned char * received = malloc(5);
+    int size_received;
+    printf("%d bytes written in DISC\n",write(app.fileDescriptor,DISC,sizeof(DISC)));
+
+    alarm(driver_layer.timeout);
+
+    while(conta <= driver_layer.numTransmissions){
+        if(flag){
+            alarm(driver_layer.timeout);
+            flag=0;
+            //voltar a enviar apos o timeout
+            write(app.fileDescriptor,DISC, sizeof(DISC));
+        }
+
+        //guardar o trama que recebeu em received
+        if((size_received = read(app.fileDescriptor,received,5)) > 0){
+            tcflush(app.fileDescriptor, TCIOFLUSH);
+        }
+
+        if(size_received > 0){
+            //comparar o trama com DISC e mandar um UA e fechar
+            if(memcmp(received,DISC,size_received) == 0){
+                printf("received DISC message, sending UA\n");    
+                write(app.fileDescriptor,UA_R_1,sizeof(UA_R_1));
+                return 0;
+            }
+            
+        }
+    }
+
+    return 0;
+}
+int llwrite(applicationLayer app, unsigned char* src, int src_size){
 
     // printf("%d control \n",control);
     (void) signal(SIGALRM, signal_handler_send);
     
     int stuff_data_size = 0, bytesWritten = 0, size_received;
     // adicionar 6 por causa dos bytes do header
-    printer(src,src_size);
     unsigned char* stuff_data = framing(src,src_size,&stuff_data_size); 
-    unsigned char * received = malloc(30);
+    printer(stuff_data,stuff_data_size);
+
+    //temos de fazer malloc(src_size*2+6) porque o emissor vai receber uma trama de controlo no fim
+    unsigned char * received = malloc(src_size*2+6);
 
 
-    bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+    bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
     printf("Sending trama with %d bytes\n",bytesWritten);
     alarm(driver_layer.timeout);
 
@@ -270,7 +260,7 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
             alarm(driver_layer.timeout);
             flag=0;
             //voltar a enviar apos o timeout
-            bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+            bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
         }
 
         //guardar o trama que recebeu em received
@@ -279,22 +269,21 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
         }
         
         if(size_received > 0){
-            // printer(received,size_received);
             //comparar o trama com o Ready Reciever trama tendo em atencao ao N, e dar update do N
             if(memcmp(received,REJ_0,size_received) == 0){
                 printf("received REJ message, sending again\n");    
-                bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+                bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
                 continue;
             }
             if (memcmp(received,REJ_1,size_received) == 0){
                 printf("received REJ message, sending again\n");    
-                bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+                bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
                 continue;
             }
-            
+            printer(received,size_received);
             if(control == 0){
                 if(memcmp(received,RR_1,size_received) == 0){
-                    printf("received RR with N = %x\n",received[2]);    
+                    printf("received RR_1 with N = %x\n",received[2]);    
                     alarm(0);
                     control = 1;
                     break;
@@ -303,15 +292,13 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
 
             if(control == 1){
                 if(memcmp(received,RR_0,size_received) == 0){
-                    printf("received RR with N = %d\n",received[2]);    
+                    printf("received RR_0 with N = %d\n",received[2]);    
                     alarm(0);
                     control = 0;
                     break;
                 }
             }
-            
         }
-        
     }   
 
     //conta-1 pk no ultimo alarme e feito conta++, e entao se for o maximo de trasmissoes, return -1 
@@ -322,7 +309,7 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
     return 0;
 }
 
-int recieve_frame(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
+int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
  
     //mudar isto com datasize
     int tem_size = datasize * 2 + 10;
@@ -342,9 +329,27 @@ int recieve_frame(applicationLayer app, unsigned char** output, int datasize, FI
             int size_data_unstuffed = 0;
             data_unstuffed = byte_destuff(temp,res,&size_data_unstuffed);
 
+
+            // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
+            if(res == 5){
+                if(disconnect == 1){
+                    if((memcmp(temp,UA_R_1,res) == 0)){
+                        printf("received DISC confirmation, exiting\n");   
+                        printf("Recived %d tramas I in total\n",tramas_r);
+                        return 0;
+                    }
+                }
+                if((memcmp(temp,DISC,res) == 0) && disconnect == 0){
+                    printf("received DISC, stopping, sending DISC\n");
+                    write(app.fileDescriptor,DISC,sizeof(DISC));   
+                    disconnect = 1;
+                    continue;
+                }
+                
+            }
+
             //verificar o valor de C, assumindo que o formato de F,A,C,BCC e valido no trama, verificar se o trama e valido depois
             if(temp[4] == 1){
-                printf("here\n");
                 //-9 pk n sabemos o tamanho dos dados pk ainda estao byte stuffed
                 if(stateM_data(data_unstuffed,size_data_unstuffed-6,size_data_unstuffed) == 0){
 
@@ -371,18 +376,12 @@ int recieve_frame(applicationLayer app, unsigned char** output, int datasize, FI
                         write(app.fileDescriptor,REJ_0,sizeof(RR_0));
                     }
                 }
-            }
             tramas_r++;
-
-            if(memcmp(temp,DISC,res) == 0){
-                printf("received DISC, stopping\n");    
-                break;
             }
-        }
 
-        disconnect++;
+           
+        }
     }
-    printf("Recived %d in total\n",tramas_r);
     return 0;
     
 }
@@ -394,6 +393,11 @@ void signal_handler() {
 
 void signal_handler_send() {
     printf("No valid message recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
+	flag=1;
+	conta++;
+}
+void signal_handler_disc() {
+    printf("No valid message DISC recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
 	flag=1;
 	conta++;
 }
@@ -421,7 +425,6 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
         framed_data[2] = 0x00; //C
         framed_data[3] = 0x00^0x03; //C
         current_size += 2;
-
     } 
     else if(control == 1){
         framed_data[2] = 0x01; //C
@@ -454,6 +457,7 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
         current_size += 2;
 
     } else {
+        // realocar memoria porque o bcc tem 2 bytes
         if(realloc(framed_data, current_size+1) == NULL){
             printf("realloc failed\n");
             exit(1); 
@@ -462,9 +466,6 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
         framed_data[4 + data_stuff_size +byte_stuff_size ] = 0x7E; //F
         current_size += byte_stuff_size+1;
     }
-    
-    free(temp_data);
-    free(byte_stuff_data);
 
     *framed_data_size = current_size;
 
