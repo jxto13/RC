@@ -133,15 +133,17 @@ int main(int argc, char** argv) {
       FILE *fp;
       char* fileName = "pinguim.gif";
       int length = openFile(&fp, fileName);
-
+      (void) length; //so pra tirar o warning
       // int bytesToRead = DATASIZE, bytesRead;
       int chunk_size = 10, bytesRead;
+
+      printf("-------Sending tramas----------\n");
 
       // fazer free()
       unsigned char* file_data = malloc(chunk_size);
     
       int current = 0;
-      for (int i = 0; current <= 15; i+=chunk_size) {
+      for (int i = 0; current < 20; i+=chunk_size) {
 
         bytesRead = fread(file_data, 1, chunk_size, fp);
         current += bytesRead;
@@ -162,29 +164,31 @@ int main(int argc, char** argv) {
       FILE *fp;
       char* fileName = "pinguim_transmitted.gif";
       fp = fopen(fileName, "w");
-
-      unsigned char* recieved = malloc(0);
-      recieve_frame(app,&recieved);
+      
+      printf("-------Receiving tramas----------\n");
+      
+      unsigned char* received = malloc(0);
+      recieve_frame(app,&received);
 
 
       // int counter = 0;
 
 
       // unsigned char* destuff_data;
-      // int test = llread(app,&recieved);
-      // llread(app,&recieved);
-      // fwrite(recieved,1,test,fp);
-      // printer(recieved,test);
+      // int test = llread(app,&received);
+      // llread(app,&received);
+      // fwrite(received,1,test,fp);
+      // printer(received,test);
       // int destuff_data_size = 0, current = 0;
       // while (counter != 65) {
-      //   current = llread(app,&recieved);
+      //   current = llread(app,&received);
       //   // printf("%d\n",current);
-      //   // unsigned char* destuff_data = byte_destuff(recieved,current,&destuff_data_size);
+      //   // unsigned char* destuff_data = byte_destuff(received,current,&destuff_data_size);
       //   counter += current;
 
       //   // printf("%d\n",current);
 
-      //   printer(recieved,current);
+      //   printer(received,current);
       //   // fwrite(destuff_data,1,destuff_data_size,fp);
       //   // printf("%d\n",counter);
       // }

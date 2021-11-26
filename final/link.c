@@ -20,8 +20,11 @@
 #define ALARM_TIMEOUT 3
 #define RETRANS_MAX 3
 
-#define VTIME_VALUE 1 // VTIME
-#define VMIN_VALUE 0 // VMIN
+#define VTIME_VALUE_TRANSMITTER 0 // VTIME
+#define VMIN_VALUE_TRANSMITTER 0 // VMIN
+
+#define VTIME_VALUE_RECEIVER 1 // VTIME
+#define VMIN_VALUE_RECEIVER 1 // VMIN
 
 #define TRANSMITTER 1
 #define RECEIVER 0
@@ -49,6 +52,8 @@ unsigned char REJ_1[5] = {0x7E,0x03,0x81,0x82,0x7E};
 int flag=0, conta=1;
 int control = 0, disconnect = 0;
 
+int stopLoop = TRUE;
+
 // declaracao de structs
 linkLayer driver_layer;
 struct termios oldtio;
@@ -59,8 +64,6 @@ void signal_handler_send();
 unsigned char BCC2(unsigned char* data, int size);
 unsigned char* framing(unsigned char* data, int size,int* framed_data_size);
 
-
-///meter llwrite dentro do llopen
 
 int llopen(applicationLayer app){
 
@@ -88,8 +91,15 @@ int llopen(applicationLayer app){
 
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME]    = VTIME_VALUE;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = VMIN_VALUE;   /* blocking read until 5 chars received */
+    if (app.status == TRANSMITTER){
+        newtio.c_cc[VTIME]    = VTIME_VALUE_TRANSMITTER;   /* inter-character timer unused */
+        newtio.c_cc[VMIN]     = VMIN_VALUE_TRANSMITTER;   /* blocking read until 5 chars received */
+    } else {
+        newtio.c_cc[VTIME] = VTIME_VALUE_RECEIVER;
+        newtio.c_cc[VMIN] = VMIN_VALUE_RECEIVER;
+    }
+
+    
 
     tcflush(app.fileDescriptor, TCIOFLUSH);
 
@@ -149,6 +159,11 @@ int llopen(applicationLayer app){
             exit(1);
         }
     }
+    //conta-1 pk no ultimo alarme e feito conta++, e entao se for o maximo de trasmissoes, return -1 
+    if(conta-1 == driver_layer.numTransmissions){
+        printf("Max retransmissions reached. Exiting...\n");
+        exit(1);
+    } 
 
     //reset das variaveis globais apos o llopen
     flag=0, conta=1;
@@ -181,15 +196,18 @@ int llread(applicationLayer app, unsigned char ** buffer){
 
     int res, counter = 0;
     int size_of_ans = 0;
-  
+    int stop = 0;
     while (STOP==FALSE) {
+
         if((res = read(app.fileDescriptor,temp,size_to_read)) > 0){
+            stop = 1;
 
             memcpy(ans+size_of_ans,temp,res);
             
             size_of_ans+=res;
             counter += res;
-            
+            // printf("%d size_of_ans+res\n", size_of_ans+res);
+
             if(realloc(ans,size_of_ans+res) == NULL){
                 printf("realloc failed\n");
                 exit(1); 
@@ -198,15 +216,23 @@ int llread(applicationLayer app, unsigned char ** buffer){
         } else if (res < 0){
             printf("Error occurred at read() function.\n Exiting! \n");
             return -1;
-        } else{
+        } 
+
+        if((res == 0 ) ){
+        printf("res = %d - stop = %d - flag = %d\n",res,stop,flag);
             STOP=TRUE;
         }
     }
-    if(realloc(*buffer,size_of_ans+size_to_read) == NULL){
-        printf("realloc failed\n");
-        return -1; 
+    if(counter == 0){
+        free(ans);
+    }else{
+        if(realloc(*buffer,size_of_ans+size_to_read) == NULL){
+            printf("realloc failed\n");
+            return -1; 
+        }
+        *buffer = ans;
     }
-    *buffer = ans;
+
     return counter;
 }
 
@@ -218,52 +244,66 @@ void printer(unsigned char* src, int size){
 }
 
 int send_frame(applicationLayer app, unsigned char* src, int src_size){
+
+    printf("%d control \n",control);
     (void) signal(SIGALRM, signal_handler_send);
     
-    int stuff_data_size = 0, bytesWritten = 0;
+    int stuff_data_size = 0, bytesWritten = 0, size_received;
 
     // adicionar 6 por causa dos bytes do header
     unsigned char* stuff_data = framing(src,src_size,&stuff_data_size); 
+    unsigned char * received = malloc(0);
 
-    
+    printer(stuff_data,stuff_data_size);
+
     bytesWritten = llwrite(app,stuff_data, stuff_data_size);
-    printf("Printing trama with %d\n",bytesWritten);
+    printf("Sending trama with %d bytes\n",bytesWritten);
     alarm(driver_layer.timeout);
 
     while(conta <= driver_layer.numTransmissions){
 
         if(flag){
+            // printf("before alarm flag = %d\n",flag);
             alarm(driver_layer.timeout);
+
             flag=0;
             //voltar a enviar apos o timeout
             bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+            // printf("after alarm flag = %d\n",flag);
+
         }
 
-        //guardar o trama que recebeu em recevied
-        unsigned char * recevied = malloc(0);
-        int size_recevied;
-        //comparar o trama com o Ready Reciever trama tendo em atencao ao N, e dar update do N
-        size_recevied = llread(app,&recevied);
+        //guardar o trama que recebeu em received
+        size_received = llread(app,&received);
+        // printf("%d size\n",size_received);
         
-        if(control == 0){
-            if(memcmp(recevied,RR_0,size_recevied) == 1){
-                alarm(0);
-                control = 1;
-                break;
-            }
-        }else{
-            if(memcmp(recevied,RR_1,size_recevied) == 1){
-                alarm(0);
-                control = 0;
-                break;
+        if(size_received > 0){
+            printer(received,size_received);
+            //comparar o trama com o Ready Reciever trama tendo em atencao ao N, e dar update do N
+            if(control == 0){
+                if(memcmp(received,RR_0,size_received) == 0){
+                    printf("received RR with N = %d\n",control);    
+                    alarm(0);
+                    control = 1;
+                    break;
+                }
+            }else{
+                if(memcmp(received,RR_1,size_received) == 0){
+                    printf("received RR with N = %d\n",control);    
+                    alarm(0);
+                    control = 0;
+                    break;
+                }
             }
         }
         
     }
+    //conta-1 pk no ultimo alarme e feito conta++, e entao se for o maximo de trasmissoes, return -1 
     if(conta-1 == driver_layer.numTransmissions){
         return -1;
     } 
-
+    free(stuff_data);
+    free(received);
 
     // int framed_data_size = 0;
     // unsigned char* framed_data = framing(test_package,5+6,&framed_data_size);
@@ -281,21 +321,40 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
     // }
     return 0;
 }
+
+void concatBytes(unsigned char** output, unsigned char* input, int output_size, int input_size){
+    if(realloc(*output, input_size+output_size) == NULL){
+        printf("realloc failed\n");
+        exit(1); 
+    }
+    memcpy(*output, input, input_size); 
+}
+
 int recieve_frame(applicationLayer app, unsigned char** output){
+    // int output_size = 0;
+    unsigned char* temp = malloc(30);
 
-    while (disconnect != 1) {
-        unsigned char* temp = malloc(0);
-        int res = llread(app,&temp);
-        printer(temp,res);
-        if(temp[2] == 0x00){
-            llwrite(app,RR_0,sizeof(RR_0));
-            printf("Responding with a RR_0 message\n");
-        }else if (temp[2] == 0x01){
-            llwrite(app,RR_1,sizeof(RR_1));
-            printf("Responding with a RR_1 message\n");
-
+    while (TRUE) {
+        // int res = llread(app,&temp);
+        int res;
+        if((res = read(app.fileDescriptor,temp,30)) > 0){
+        printf("%d res\n",res);
         }
-        disconnect = 1;
+        // printer(temp,res);
+        if(res > 0){
+            printer(temp,res);
+            // llwrite(app,RR_0,sizeof(RR_0));
+            if(temp[2] == 0){
+                printf("Responding with a RR_0 message with ");
+                write(app.fileDescriptor,RR_0,sizeof(RR_0));
+                // printf("%d bytes\n",llwrite(app,RR_0,sizeof(RR_0)));
+            }else if (temp[2] == 1){
+                printf("Responding with a RR_1 message with ");
+                // printf("%d bytes\n",llwrite(app,RR_1,sizeof(RR_1)));
+            }
+        }
+        // }
+        disconnect++;
     }
     
     
