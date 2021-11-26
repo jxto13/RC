@@ -35,18 +35,15 @@ int getSize_Uchar(unsigned char* src){
 }
 
 unsigned char* data_package_gen(unsigned char* data, int length){
-  unsigned char* data_package = malloc(DATASIZE + 4);
+  unsigned char* data_package = malloc(length + 4);
   data_package[0] = 0x01;
-  data_package[1] = DATASIZE%256;
-  data_package[2] = DATASIZE/256;
-  if(length < 256){
-    memcpy(data_package+3,(unsigned char[]) {length},1);
-    memcpy(data_package+4,data,length);
-  } 
-  else{
-    data_package[0] = 0x00;
-    memcpy(data_package+4,data,length);
-  } 
+  data_package[1] = length%256;
+  data_package[2] = length/256;
+  data_package[2] = length - (length * (length/256));
+
+  // memcpy(data_package+3,(unsigned char[]) {length},1);
+  memcpy(data_package+4,data,length);
+  
   return data_package;
 }
 
@@ -135,7 +132,7 @@ int main(int argc, char** argv) {
       int length = openFile(&fp, fileName);
       // (void) length; //so pra tirar o warning
 
-      int chunk_size = 10, bytesRead;
+      int chunk_size = 420, bytesRead;
 
       printf("-------Sending tramas----------\n");
 

@@ -255,13 +255,13 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
     
     int stuff_data_size = 0, bytesWritten = 0, size_received;
     // adicionar 6 por causa dos bytes do header
+    printer(src,src_size);
     unsigned char* stuff_data = framing(src,src_size,&stuff_data_size); 
     unsigned char * received = malloc(30);
 
-    printer(stuff_data,stuff_data_size);
 
-    printf("Sending trama with %d bytes\n",bytesWritten);
     bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+    printf("Sending trama with %d bytes\n",bytesWritten);
     alarm(driver_layer.timeout);
 
     while(conta <= driver_layer.numTransmissions){
@@ -281,21 +281,35 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
         if(size_received > 0){
             // printer(received,size_received);
             //comparar o trama com o Ready Reciever trama tendo em atencao ao N, e dar update do N
+            if(memcmp(received,REJ_0,size_received) == 0){
+                printf("received REJ message, sending again\n");    
+                bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+                continue;
+            }
+            if (memcmp(received,REJ_1,size_received) == 0){
+                printf("received REJ message, sending again\n");    
+                bytesWritten = llwrite(app,stuff_data, stuff_data_size);
+                continue;
+            }
+            
             if(control == 0){
-                if(memcmp(received,RR_0,size_received) == 0){
-                    printf("received RR with N = %d\n",control);    
+                if(memcmp(received,RR_1,size_received) == 0){
+                    printf("received RR with N = %x\n",received[2]);    
                     alarm(0);
                     control = 1;
                     break;
                 }
-            }else{
-                if(memcmp(received,RR_1,size_received) == 0){
-                    printf("received RR with N = %d\n",control);    
+            }
+
+            if(control == 1){
+                if(memcmp(received,RR_0,size_received) == 0){
+                    printf("received RR with N = %d\n",received[2]);    
                     alarm(0);
                     control = 0;
                     break;
                 }
             }
+            
         }
         
     }   
@@ -304,8 +318,6 @@ int send_frame(applicationLayer app, unsigned char* src, int src_size){
     if(conta-1 == driver_layer.numTransmissions){
         return -1;
     } 
-    free(stuff_data);
-    free(received);
 
     return 0;
 }
@@ -332,26 +344,32 @@ int recieve_frame(applicationLayer app, unsigned char** output, int datasize, FI
 
             //verificar o valor de C, assumindo que o formato de F,A,C,BCC e valido no trama, verificar se o trama e valido depois
             if(temp[4] == 1){
-
+                printf("here\n");
                 //-9 pk n sabemos o tamanho dos dados pk ainda estao byte stuffed
                 if(stateM_data(data_unstuffed,size_data_unstuffed-6,size_data_unstuffed) == 0){
+
                     fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
                     
-                    printer(data_unstuffed+8,size_data_unstuffed-10);
+                    printer(data_unstuffed,size_data_unstuffed);
                     printf("Received trama is correct \n");
 
                     if(temp[2] == 0){
-                        printf("Responding with a RR_0 message with ");
-                        printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
-
-                    }else if (temp[2] == 1){
                         printf("Responding with a RR_1 message with ");
                         printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
+
+                    }else if (temp[2] == 1){
+                        printf("Responding with a RR_0 message with ");
+                        printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
                     }
 
                 }else{
                     printf("Received trama as an error, sending REJJ message \n");
-
+                    if(temp[2] == 0){
+                        write(app.fileDescriptor,REJ_1,sizeof(RR_1));
+                    }
+                    if(temp[2] == 1){
+                        write(app.fileDescriptor,REJ_0,sizeof(RR_0));
+                    }
                 }
             }
             tramas_r++;

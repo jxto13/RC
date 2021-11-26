@@ -52,7 +52,6 @@ int stateM_data(unsigned char* frame, int data_size, int frame_size){
             unsigned char* data_ptr = frame;
             // se chegou aqui o bcc1 e valido, sabemos que isto e um trama I, logo avancamos 8 bytes para os dados
             data_ptr += 4;
-            
             data_destuffed = malloc(data_size); // +1 para o BCC2
 
             for (int j = 0; j < data_size; j++){  
