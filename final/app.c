@@ -133,8 +133,8 @@ int main(int argc, char** argv) {
       FILE *fp;
       char* fileName = "pinguim.gif";
       int length = openFile(&fp, fileName);
-      (void) length; //so pra tirar o warning
-      // int bytesToRead = DATASIZE, bytesRead;
+      // (void) length; //so pra tirar o warning
+
       int chunk_size = 10, bytesRead;
 
       printf("-------Sending tramas----------\n");
@@ -142,9 +142,9 @@ int main(int argc, char** argv) {
       // fazer free()
       unsigned char* file_data = malloc(chunk_size);
     
-      int current = 0;
-      for (int i = 0; current < 20; i+=chunk_size) {
-
+      int current = 0, counter = 0;
+      for (int i = 0; current < length; i+=chunk_size) {
+        counter++;
         bytesRead = fread(file_data, 1, chunk_size, fp);
         current += bytesRead;
 
@@ -157,7 +157,11 @@ int main(int argc, char** argv) {
         }
 
     }
+      unsigned char DISC[5] = {0x7E,0x03,0x0B,0x04,0x7E};
 
+      write(app.fileDescriptor,DISC,sizeof(DISC));
+      counter++;
+      printf("Sended %d tramas in total\n",counter);
       fclose(fp);
 
     }else{ // reciever
@@ -168,7 +172,7 @@ int main(int argc, char** argv) {
       printf("-------Receiving tramas----------\n");
       
       unsigned char* received = malloc(0);
-      recieve_frame(app,&received);
+      recieve_frame(app,&received, DATASIZE, fp);
 
 
       // int counter = 0;

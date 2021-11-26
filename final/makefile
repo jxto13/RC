@@ -1,6 +1,6 @@
 
 driver:
-	gcc -Wall app.c link.c stateM_lib.c byteStuffing.c -o main -lm
+	gcc -Wall app.c link.c stateM_lib.c byteStuffing.c stateM_data.c -o main -lm
 
 run_emissor:
 	@./main /dev/ttyS10 
