@@ -17,16 +17,6 @@ int n_digits(int x){
     return cont;
 }
 
-int getSize_Uchar(unsigned char* src){
-    unsigned char* pointer = src;
-    int counter = 0;
-    while(*pointer != '\0'){
-        counter++;
-        pointer++;
-    }
-    return counter;
-}
-
 unsigned char* control_data_package(char* file_name ,int file_length, int control){
   unsigned char* control_data_package = malloc(strlen(file_name) + n_digits(file_length) + 5);
   if(control == 1){ //START
@@ -111,6 +101,11 @@ int main(){
     open_control_data_package(c_data_package);
     printer(file_size_received, 5);
     printer(file_name_received, 11);
+
+    int received_size;
+    received_size = atoi((char*) file_size_received);
+    
+    printf("%d\n", received_size);
 
     return 0;
 }
