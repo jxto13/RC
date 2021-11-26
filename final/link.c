@@ -56,6 +56,8 @@ unsigned char REJ_1[5] = {0x7E,0x03,0x81,0x82,0x7E};
 // comando do emissor para o recetor de confirmacao no disconnect
 unsigned char UA_R_1[5] = {0x7E,0x01,0x07,0x04,0x7E};
 
+unsigned char* file_name_received;
+unsigned char* file_size_received;
 
 int flag=0, conta=1;
 int control = 0, disconnect = 0;
@@ -74,6 +76,7 @@ void signal_handler_disc();
 unsigned char BCC2(unsigned char* data, int size);
 unsigned char* framing(unsigned char* data, int size,int* framed_data_size);
 
+void open_control_data_package(unsigned char* received_control_data_package);
 
 int llopen(applicationLayer app){
 
@@ -206,7 +209,8 @@ int llclose_writter(applicationLayer app){
     //podemos de fazer malloc(5) porque o emissor so ira receber respostas que teem tamanho maximo de 5
     unsigned char * received = malloc(5);
     int size_received;
-    printf("%d bytes written in DISC\n",write(app.fileDescriptor,DISC,sizeof(DISC)));
+    printf("Sending DISC message\n");
+    write(app.fileDescriptor,DISC,sizeof(DISC));
 
     alarm(driver_layer.timeout);
 
@@ -242,9 +246,9 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
     (void) signal(SIGALRM, signal_handler_send);
     
     int stuff_data_size = 0, bytesWritten = 0, size_received;
+    // printer(src,src);
     // adicionar 6 por causa dos bytes do header
     unsigned char* stuff_data = framing(src,src_size,&stuff_data_size); 
-    printer(stuff_data,stuff_data_size);
 
     //temos de fazer malloc(src_size*2+6) porque o emissor vai receber uma trama de controlo no fim
     unsigned char * received = malloc(src_size*2+6);
@@ -280,7 +284,7 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
                 bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
                 continue;
             }
-            printer(received,size_received);
+            // printer(received,size_received);
             if(control == 0){
                 if(memcmp(received,RR_1,size_received) == 0){
                     printf("received RR_1 with N = %x\n",received[2]);    
@@ -315,6 +319,7 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
     int tem_size = datasize * 2 + 10;
     unsigned char* temp = malloc(tem_size);
 
+    int N_control = 1, received_size;
     while (TRUE) {
 
         int res;
@@ -328,7 +333,6 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
 
             int size_data_unstuffed = 0;
             data_unstuffed = byte_destuff(temp,res,&size_data_unstuffed);
-
 
             // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
             if(res == 5){
@@ -344,27 +348,67 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     write(app.fileDescriptor,DISC,sizeof(DISC));   
                     disconnect = 1;
                     continue;
+                }  
+            }
+
+            // se receber um pacote de start
+            if(temp[4] == 2){
+                if(temp[2] == 0){
+                    printf("recieved start control trama\n");
+                    fp = fopen("pinguim_transmitted.gif", "w");
+                    if(fp == NULL){
+                        printf("File Open failed\n");
+                        return -1;
+                    }
+                    write(app.fileDescriptor,RR_1,sizeof(RR_1));
+                    continue;
+                }else if (temp[2] == 1){
+                    printf("recieved start control trama\n");
+                    fp = fopen("pinguim_transmitted.gif", "w");
+                    if(fp == NULL){
+                        printf("File Open failed\n");
+                        return -1;
+                    }
+                    write(app.fileDescriptor,RR_0,sizeof(RR_0));
+                    continue;
                 }
-                
+            }
+            // se receber um pacote de end
+            if(temp[4] == 3){
+                if(temp[2] == 0){
+                    printf("recieved end control trama\n");
+                    write(app.fileDescriptor,RR_1,sizeof(RR_1));
+                    fclose(fp); 
+                    continue;
+                }else if (temp[2] == 1){
+                    printf("recieved end control trama\n");
+                    write(app.fileDescriptor,RR_0,sizeof(RR_0));
+                    fclose(fp); 
+                    continue;
+                }
             }
 
             //verificar o valor de C, assumindo que o formato de F,A,C,BCC e valido no trama, verificar se o trama e valido depois
-            if(temp[4] == 1){
+            if(temp[4] == 1){ //trama de informacao
                 //-9 pk n sabemos o tamanho dos dados pk ainda estao byte stuffed
                 if(stateM_data(data_unstuffed,size_data_unstuffed-6,size_data_unstuffed) == 0){
+                    // printf("temp[2] = %d N_control = %d\n",temp[2],N_control);
+                    if(N_control == temp[2]){
+                        fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
+                        
+                        // printer(data_unstuffed,size_data_unstuffed);
+                        printf("Received trama is correct \n");
 
-                    fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
-                    
-                    printer(data_unstuffed,size_data_unstuffed);
-                    printf("Received trama is correct \n");
-
-                    if(temp[2] == 0){
-                        printf("Responding with a RR_1 message with ");
-                        printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
-
-                    }else if (temp[2] == 1){
-                        printf("Responding with a RR_0 message with ");
-                        printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
+                        if(temp[2] == 0){
+                            printf("Responding with a RR_1 message with ");
+                            printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
+                            N_control = 1;
+                        }else if (temp[2] == 1){
+                            printf("Responding with a RR_0 message with ");
+                            printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
+                            N_control = 0;
+                        }
+                        control = temp[2];
                     }
 
                 }else{
@@ -470,4 +514,48 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
     *framed_data_size = current_size;
 
     return framed_data;
+}
+
+void open_control_data_package(unsigned char* received_control_data_package){
+    //if(received_control_data_package[0] == 0x03)
+
+    int states[2] = {0,0};
+    int size;
+
+    unsigned char* ptr = received_control_data_package; //Começa pelo controlo
+    ptr++; //Passa para o Tipo
+
+    if(*ptr == 0x00){ //Se o tipo for T1
+        ptr++; //Passa para o tamanho L1
+        size = *ptr;
+        file_size_received = malloc(*ptr);
+        for (int i = 0; i < size; i++)
+        {
+            ptr++; //Para percorrer a trama e ler os valores
+            file_size_received[i] = *ptr; //Guarda os valores na variável global
+        }
+
+        ptr++; //Passar para o próximo passo
+        states[0] = 1; //Para confirmar que já guardou o tamanho do ficheiro
+    }
+
+    if(*ptr == 0x01){ //Se o tipo for T2
+        ptr++; //Passa para o tamanho L2
+        size = *ptr;
+        file_name_received = malloc(*ptr);
+        for (int i = 0; i < size; i++)
+        {
+            ptr++; //Para percorrer a trama e ler os valores
+            file_name_received[i] = *ptr; //Guarda os valores na variável global
+        }
+        states[1] = 1; //Para confirmar que já guardou o tamanho do ficheiro
+    }
+
+    else{
+        if(states[1] == 1 || states[0] == 1){
+            free(file_name_received);
+            free(file_size_received);
+            printf("Something went wrong with the control package, please provide another one");
+        }
+    }
 }

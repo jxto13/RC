@@ -13,38 +13,52 @@
 #include "app.h"
 #include "link.h"
 
+#define DATASIZE 514 //Testing data size
 
-#define DATASIZE 512 //Testing data size
+
+int n_digits(int x){
+    int cont = 0;
+    while(x != 0){
+        x = x/10;
+        cont++;
+    }
+
+    return cont;
+}
 
 unsigned char* data_package_gen(unsigned char* data, int length){
   unsigned char* data_package = malloc(length + 4);
   data_package[0] = 0x01;
   data_package[1] = length%256;
   data_package[2] = length/256;
-  data_package[2] = length - (length * (length/256));
+  data_package[3] = length - (int) data_package[2] * 256;
 
-  // memcpy(data_package+3,(unsigned char[]) {length},1);
   memcpy(data_package+4,data,length);
   
   return data_package;
 }
 
-// unsigned char* control_data_package(unsigned char* file_name ,int file_length, int control){
-//   unsigned char* control_data_package = malloc(getSize_Uchar(file_name) + n_bytes(file_length) + 5);
-//   if(control == 1){ //START
-//     control_data_package[0] = 0x02; // C
-//   }
-//   else{ //END
-//     control_data_package[0] = 0x03; // C
-//   }
-//   control_data_package[1] = 0x00; // T1
-//   memcpy(control_data_package+2,(unsigned char[]) {n_bytes(file_length)},1); // L1
-//   memcpy(control_data_package+3,(unsigned char[]) {file_length},n_bytes(file_length)); // V1
-//   control_data_package[n_bytes(file_length)] = 0x01; // T2
-//   memcpy(control_data_package+n_bytes(file_length)+1,(unsigned char[]) {getSize_Uchar(file_name)},1); // L2
-//   memcpy(control_data_package+n_bytes(file_length)+2,file_name,getSize_Uchar(file_name)); // V2
-//   return control_data_package;
-// }
+unsigned char* control_data_package(char* file_name ,int file_length, int control){
+  unsigned char* control_data_package = malloc(strlen(file_name) + n_digits(file_length) + 5);
+  if(control == 1){ //START
+    control_data_package[0] = 0x02; // C
+  }
+  else{ //END
+    control_data_package[0] = 0x03; // C
+  }
+  control_data_package[1] = 0x00; // T1
+
+  unsigned char file_size[n_digits(file_length)];
+  sprintf((char*)file_size, "%d", file_length);
+
+  memcpy(control_data_package+2,(unsigned char[]) {n_digits(file_length)},1); // L1
+  memcpy(control_data_package+3, file_size,n_digits(file_length)); // V1
+  control_data_package[n_digits(file_length)+3] = 0x01; // T2
+  memcpy(control_data_package+n_digits(file_length)+4,(unsigned char[]) {strlen(file_name)},1); // L2
+  memcpy(control_data_package+n_digits(file_length)+5,file_name,strlen(file_name)); // V2
+  return control_data_package;
+}
+
 
 int openFile(FILE** fp, char* fileName){
 
@@ -117,7 +131,8 @@ int main(int argc, char** argv) {
 
       printf("-------Sending tramas----------\n");
 
-      // fazer free()
+      llwrite(app,control_data_package(fileName,length,1),strlen(fileName) + n_digits(length) + 5);
+      
       unsigned char* file_data = malloc(chunk_size);
     
       int current = 0, counter = 0;
@@ -135,6 +150,9 @@ int main(int argc, char** argv) {
         }
 
       }
+
+      llwrite(app,control_data_package(fileName,length,2),strlen(fileName) + n_digits(length) + 5);
+
       printf("-------Disconnect tramas----------\n"); 
 
       llclose_writter(app);
@@ -147,15 +165,13 @@ int main(int argc, char** argv) {
 
     }else{ // reciever
       FILE *fp;
-      char* fileName = "pinguim_transmitted.gif";
-      fp = fopen(fileName, "w");
+      // char* fileName = "pinguim_transmitted.gif";
       
       printf("-------Receiving tramas----------\n");
       
       unsigned char* received = malloc(0);
       llread(app,&received, DATASIZE, fp);
 
-      fclose(fp); 
 
     }
 
