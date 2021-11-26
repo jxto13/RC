@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+unsigned char* file_name_received;
+unsigned char* file_size_received;
+
 int file_length = 10968;
 
 int n_digits(int x){
@@ -45,9 +48,8 @@ unsigned char* control_data_package(char* file_name ,int file_length, int contro
   return control_data_package;
 }
 
-void printer(unsigned char* to_print){
-    printf("SIZE: %d\n", 21);
-    for (int i = 0; i < 21; i++)
+void printer(unsigned char* to_print, int size){
+    for (int i = 0; i < size; i++)
     {
         printf("%x ", to_print[i]);
     }
@@ -55,13 +57,60 @@ void printer(unsigned char* to_print){
     printf("\n"); 
 }
 
+void open_control_data_package(unsigned char* received_control_data_package){
+    //if(received_control_data_package[0] == 0x03)
+
+    int states[2] = {0,0};
+    int size;
+
+    unsigned char* ptr = received_control_data_package; //Começa pelo controlo
+    ptr++; //Passa para o Tipo
+
+    if(*ptr == 0x00){ //Se o tipo for T1
+        ptr++; //Passa para o tamanho L1
+        size = *ptr;
+        file_size_received = malloc(*ptr);
+        for (int i = 0; i < size; i++)
+        {
+            ptr++; //Para percorrer a trama e ler os valores
+            file_size_received[i] = *ptr; //Guarda os valores na variável global
+        }
+
+        ptr++; //Passar para o próximo passo
+        states[0] = 1; //Para confirmar que já guardou o tamanho do ficheiro
+    }
+
+    if(*ptr == 0x01){ //Se o tipo for T2
+        ptr++; //Passa para o tamanho L2
+        size = *ptr;
+        file_name_received = malloc(*ptr);
+        for (int i = 0; i < size; i++)
+        {
+            ptr++; //Para percorrer a trama e ler os valores
+            file_name_received[i] = *ptr; //Guarda os valores na variável global
+        }
+        states[1] = 1; //Para confirmar que já guardou o tamanho do ficheiro
+    }
+
+    else{
+        if(states[1] == 1 || states[0] == 1){
+            free(file_name_received);
+            free(file_size_received);
+            printf("Something went wrong with the control package, please provide another one");
+        }
+    }
+}
+
 int main(){
     int size = 10968;
     char* file_name = "pinguim.gif"; 
 
-    unsigned char* test = control_data_package(file_name,size,0);
+    unsigned char* c_data_package = control_data_package(file_name,size,0);
 
-    printer(test);
+    printer(c_data_package, 21);
+    open_control_data_package(c_data_package);
+    printer(file_size_received, 5);
+    printer(file_name_received, 11);
 
     return 0;
 }
