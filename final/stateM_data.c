@@ -33,13 +33,6 @@ unsigned char BCC2_calculation(unsigned char* data,int size){
     return bcc;
 }
 
-void printer2(unsigned char* src, int size){
-    for (int i = 0; i < size; i++){
-        printf("%02x ",src[i]);
-    }
-    printf("\n");
-}
-
 int stateM_data(unsigned char* frame, int data_size, int frame_size){
     unsigned char* ptr = frame;
     int i = 0;
@@ -49,35 +42,36 @@ int stateM_data(unsigned char* frame, int data_size, int frame_size){
         i++;
 
         if(stateM_data_BCC1 == 1 && stateM_data_BCC2 == 0){
-            unsigned char* data_ptr = frame;
-            // se chegou aqui o bcc1 e valido, sabemos que isto e um trama I, logo avancamos 8 bytes para os dados
-            data_ptr += 4;
+            unsigned char* save_point = ptr;
+            ptr += 4;
             data_destuffed = malloc(data_size); // +1 para o BCC2
 
             for (int j = 0; j < data_size; j++){  
-                data_destuffed[j] = *data_ptr;
-                data_ptr++;
+                data_destuffed[j] = *ptr;
+                ptr++;
             }
-            BCC2_destuffed = *data_ptr;
+            BCC2_destuffed = *ptr;
             
             if(BCC2_destuffed == BCC2_calculation(data_destuffed,data_size)){ //compara BCC2
                 stateM_data_BCC2 = 1;
-                ptr = data_ptr+1;
+                ptr = ptr+1;
             }
 
             else{
                 printf("Frame has an error! Please request a new frame\n");
-                return -1;
+                ptr = save_point;
+                clear_machine_stateM_data();
             }
         }
 
         state = *ptr;
-
+        
         switch (state)
         {
             case 0x7E:
                 if(stateM_data_BCC2 == 1){
                     clear_machine_stateM_data();
+                    return 1;
                 }
                 else if(stateM_data_BCC2 == 0 && stateM_data_BCC1 == 1) clear_machine_stateM_data();
                 else stateM_data_F = 1;
