@@ -16,6 +16,7 @@ int llclose(applicationLayer app);
 int llclose_writter(applicationLayer app);
 int llwrite(applicationLayer app, unsigned char* src, int src_size);
 int llread(applicationLayer app, unsigned char** output, int datasize,FILE *fp);
+int reader(applicationLayer app, unsigned char ** buffer);
 unsigned char BCC2(unsigned char* data, int size);
 unsigned char* framing(unsigned char* data, int size,int* framed_data_size);
 void signal_handler();

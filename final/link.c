@@ -21,11 +21,11 @@
 #define ALARM_TIMEOUT 3
 #define RETRANS_MAX 3
 
-#define VTIME_VALUE_TRANSMITTER 0 // VTIME
+#define VTIME_VALUE_TRANSMITTER 1 // VTIME
 #define VMIN_VALUE_TRANSMITTER 0 // VMIN
 
-#define VTIME_VALUE_RECEIVER 0 // VTIME
-#define VMIN_VALUE_RECEIVER 1 // VMIN
+#define VTIME_VALUE_RECEIVER 5 // VTIME
+#define VMIN_VALUE_RECEIVER 0 // VMIN
 
 #define TRANSMITTER 1
 #define RECEIVER 0
@@ -60,6 +60,8 @@ unsigned char* file_name_received;
 unsigned char* file_size_received;
 
 int flag=0, conta=1;
+int flag_send=0, conta_send=1;
+
 int control = 0, disconnect = 0;
 int  tramas_r = 0;
 int stopLoop = TRUE;
@@ -129,7 +131,7 @@ int llopen(applicationLayer app){
         }
         alarm(driver_layer.timeout);
 
-        while(conta <= driver_layer.numTransmissions){
+        while(conta < driver_layer.numTransmissions){
 
             if(flag){
                 alarm(driver_layer.timeout);
@@ -240,110 +242,131 @@ int llclose_writter(applicationLayer app){
 
     return 0;
 }
+
+void signal_handler_send() {
+    if(conta_send == 0 ){
+        flag_send=1;
+    }else{
+        printf("No valid message recieved! Resending message... %d\\%d\n",conta_send,ALARM_TIMEOUT);
+        flag_send=1;
+    }
+}
+
 int llwrite(applicationLayer app, unsigned char* src, int src_size){
 
-    // printf("%d control \n",control);
-    (void) signal(SIGALRM, signal_handler_send);
     
     int stuff_data_size = 0, bytesWritten = 0, size_received;
-    // printer(src,src);
+
     // adicionar 6 por causa dos bytes do header
     unsigned char* stuff_data = framing(src,src_size,&stuff_data_size); 
 
     //temos de fazer malloc(src_size*2+6) porque o emissor vai receber uma trama de controlo no fim
     unsigned char * received = malloc(src_size*2+6);
 
+    (void) signal(SIGALRM, signal_handler_send);
 
     bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
     printf("Sending trama with %d bytes\n",bytesWritten);
+    printer(stuff_data,stuff_data_size);
     alarm(driver_layer.timeout);
 
-    while(conta <= driver_layer.numTransmissions){
 
-        if(flag){
+    while(conta_send <= driver_layer.numTransmissions){
+
+        if(flag_send){
             alarm(driver_layer.timeout);
-            flag=0;
+            flag_send=0;
             //voltar a enviar apos o timeout
             bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
+            printf("Sending trama with %d bytes\n",bytesWritten);
+            printer(stuff_data,stuff_data_size);
+            conta_send++;
         }
 
         //guardar o trama que recebeu em received
-        if((size_received = read(app.fileDescriptor,received,30)) > 0){
-            tcflush(app.fileDescriptor, TCIOFLUSH);
+        if((size_received = read(app.fileDescriptor,received,src_size*2+6)) > 0){
+            printer(received,size_received);
         }
-        
-        if(size_received > 0){
-            //comparar o trama com o Ready Reciever trama tendo em atencao ao N, e dar update do N
-            if(memcmp(received,REJ_0,size_received) == 0){
-                printf("received REJ message, sending again\n");    
-                bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
-                continue;
-            }
-            if (memcmp(received,REJ_1,size_received) == 0){
-                printf("received REJ message, sending again\n");    
-                bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
-                continue;
-            }
-            // printer(received,size_received);
-            if(control == 0){
-                if(memcmp(received,RR_1,size_received) == 0){
-                    printf("received RR_1 with N = %x\n",received[2]);    
-                    alarm(0);
-                    control = 1;
-                    break;
-                }
-            }
 
-            if(control == 1){
-                if(memcmp(received,RR_0,size_received) == 0){
-                    printf("received RR_0 with N = %d\n",received[2]);    
-                    alarm(0);
-                    control = 0;
-                    break;
+        if(size_received > 0){
+            // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
+            if(size_received == 5){
+                if(control == 0){
+                    if(memcmp(received,RR_1,size_received) == 0){
+                        printf("received RR_1 with N = %x\n",received[2]);    
+                        alarm(0);
+                        control = 1;
+                        conta_send = 0;
+                        return 0;
+                    }
+                }
+                if(control == 1){
+                    if(memcmp(received,RR_0,size_received) == 0){
+                        printf("received RR_0 with N = %d\n",received[2]);    
+                        alarm(0);
+                        control = 0;
+                        conta_send = 0;
+                        return 0;
+                    }
+                }
+                if(memcmp(received,REJ_0,size_received) == 0){
+                    printf("received REJ message, sending again\n");    
+                    bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
+                    continue;
+                }
+                if (memcmp(received,REJ_1,size_received) == 0){
+                    printf("received REJ message, sending again\n");    
+                    bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
+                    continue;
                 }
             }
         }
     }   
 
     //conta-1 pk no ultimo alarme e feito conta++, e entao se for o maximo de trasmissoes, return -1 
-    if(conta-1 == driver_layer.numTransmissions){
+    if(conta_send - 1 == driver_layer.numTransmissions){
         return -1;
     } 
-
+    conta_send = 0;
     return 0;
 }
 
+
 int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
- 
-    //mudar isto com datasize
-    int tem_size = datasize * 2 + 10;
-    unsigned char* temp = malloc(tem_size);
 
-    int N_control = 1, received_size;
-    while (TRUE) {
+    int N_control = 1;
+    int res;
 
-        int res;
-        if((res = read(app.fileDescriptor,temp,tem_size)) > 0){
-            tcflush(app.fileDescriptor, TCIOFLUSH);
+    while(TRUE) {
+        char buf[600];
+
+        int total_read = 0, buf_size = 600;
+        int n_read; 
+
+        while ((n_read = read(app.fileDescriptor, buf + total_read, buf_size - total_read)) > 0) {
+            printf("%d n_read\n",n_read);
+            total_read += n_read;
         }
+        // printer(buf, total_read);
 
+        res = total_read;
         if(res > 0){
             printf("Received trama with %d bytes \n",res);
             unsigned char* data_unstuffed = malloc(res);
 
             int size_data_unstuffed = 0;
-            data_unstuffed = byte_destuff(temp,res,&size_data_unstuffed);
+            data_unstuffed = byte_destuff(buf,res,&size_data_unstuffed);
 
             // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
             if(res == 5){
                 if(disconnect == 1){
-                    if((memcmp(temp,UA_R_1,res) == 0)){
+                    if((memcmp(buf,UA_R_1,res) == 0)){
                         printf("received DISC confirmation, exiting\n");   
                         printf("Recived %d tramas I in total\n",tramas_r);
                         return 0;
                     }
                 }
-                if((memcmp(temp,DISC,res) == 0) && disconnect == 0){
+                if((memcmp(buf,DISC,res) == 0) && disconnect == 0){
                     printf("received DISC, stopping, sending DISC\n");
                     write(app.fileDescriptor,DISC,sizeof(DISC));   
                     disconnect = 1;
@@ -351,95 +374,91 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                 }  
             }
 
-            // se receber um pacote de start
-            if(temp[4] == 2){
-                if(temp[2] == 0){
-                    printf("recieved start control trama\n");
-                    fp = fopen("pinguim_transmitted.gif", "w");
-                    if(fp == NULL){
-                        printf("File Open failed\n");
-                        return -1;
-                    }
-                    write(app.fileDescriptor,RR_1,sizeof(RR_1));
-                    continue;
-                }else if (temp[2] == 1){
-                    printf("recieved start control trama\n");
-                    fp = fopen("pinguim_transmitted.gif", "w");
-                    if(fp == NULL){
-                        printf("File Open failed\n");
-                        return -1;
-                    }
-                    write(app.fileDescriptor,RR_0,sizeof(RR_0));
-                    continue;
-                }
-            }
-            // se receber um pacote de end
-            if(temp[4] == 3){
-                if(temp[2] == 0){
-                    printf("recieved end control trama\n");
-                    write(app.fileDescriptor,RR_1,sizeof(RR_1));
-                    fclose(fp); 
-                    continue;
-                }else if (temp[2] == 1){
-                    printf("recieved end control trama\n");
-                    write(app.fileDescriptor,RR_0,sizeof(RR_0));
-                    fclose(fp); 
-                    continue;
-                }
-            }
-
-            //verificar o valor de C, assumindo que o formato de F,A,C,BCC e valido no trama, verificar se o trama e valido depois
-            if(temp[4] == 1){ //trama de informacao
-                //-9 pk n sabemos o tamanho dos dados pk ainda estao byte stuffed
-                if(stateM_data(data_unstuffed,size_data_unstuffed-6,size_data_unstuffed) == 0){
-                    // printf("temp[2] = %d N_control = %d\n",temp[2],N_control);
-                    if(N_control == temp[2]){
-                        fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
-                        
-                        // printer(data_unstuffed,size_data_unstuffed);
-                        printf("Received trama is correct \n");
-
-                        if(temp[2] == 0){
-                            printf("Responding with a RR_1 message with ");
-                            printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
-                            N_control = 1;
-                        }else if (temp[2] == 1){
-                            printf("Responding with a RR_0 message with ");
-                            printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
-                            N_control = 0;
+            //-6 pk n sabemos o tamanho dos dados pk ainda estao byte stuffed
+                if(stateM_data(data_unstuffed,size_data_unstuffed-6,size_data_unstuffed) == 1){
+                    // se receber um pacote de start
+                    if(buf[4] == 2){
+                        if(buf[2] == 0){
+                            printf("recieved start control trama\n");
+                            fp = fopen("pinguim_transmitted.gif", "w");
+                            if(fp == NULL){
+                                printf("File Open failed\n");
+                                return -1;
+                            }
+                            write(app.fileDescriptor,RR_1,sizeof(RR_1));
+                            continue;
+                        }else if (buf[2] == 1){
+                            printf("recieved start control trama\n");
+                            fp = fopen("pinguim_transmitted.gif", "w");
+                            if(fp == NULL){
+                                printf("File Open failed\n");
+                                return -1;
+                            }
+                            write(app.fileDescriptor,RR_0,sizeof(RR_0));
+                            continue;
                         }
-                        control = temp[2];
+                    }
+                    // se receber um pacote de end
+                    if(buf[4] == 3){
+                        if(buf[2] == 0){
+                            printf("recieved end control trama\n");
+                            write(app.fileDescriptor,RR_1,sizeof(RR_1));
+                            fclose(fp); 
+                            continue;
+                        }else if (buf[2] == 1){
+                            printf("recieved end control trama\n");
+                            write(app.fileDescriptor,RR_0,sizeof(RR_0));
+                            fclose(fp); 
+                            continue;
+                        }
                     }
 
-                }else{
-                    printf("Received trama as an error, sending REJJ message \n");
-                    if(temp[2] == 0){
-                        write(app.fileDescriptor,REJ_1,sizeof(RR_1));
+                    if(buf[4] == 1){ //trama de informacao
+                        printf("temp[2] = %d N_control = %d\n",buf[2],N_control);
+                        if(N_control == buf[2]){
+                            printer(data_unstuffed+8,size_data_unstuffed-10);
+                            fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
+                            
+                //             printf("Received trama is correct \n");
+
+                            if(buf[2] == 0){
+                                printf("Responding with a RR_1 message with ");
+                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
+                                N_control = 1;
+                            }else if (buf[2] == 1){
+                                printf("Responding with a RR_0 message with ");
+                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
+                                N_control = 0;
+                            }
+                            control = buf[2];
+                        }
+                        else{
+                            printf("frame is repeated\n");
+                            if(buf[2] == 0){
+                                printf("Responding with a RR_1 message with ");
+                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
+                                continue;
+                            }else if (buf[2] == 1){
+                                printf("Responding with a RR_0 message with ");
+                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
+                                continue;
+                            }
+                        }
                     }
-                    if(temp[2] == 1){
-                        write(app.fileDescriptor,REJ_0,sizeof(RR_0));
-                    }
-                }
+                }    
             tramas_r++;
             }
-
-           
-        }
     }
     return 0;
-    
 }
+
 void signal_handler() {
-    printf("No valid message recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
+	printf("No valid message UA recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
 	flag=1;
 	conta++;
 }
 
-void signal_handler_send() {
-    printf("No valid message recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
-	flag=1;
-	conta++;
-}
+
 void signal_handler_disc() {
     printf("No valid message DISC recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
 	flag=1;

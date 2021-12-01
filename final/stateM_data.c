@@ -43,21 +43,23 @@ int stateM_data(unsigned char* frame, int data_size, int frame_size){
 
         if(stateM_data_BCC1 == 1 && stateM_data_BCC2 == 0){
             unsigned char* save_point = ptr;
-            ptr += 4;
+            // ptr += 4;
+            // printf("%02x ptr\n",*ptr);
             data_destuffed = malloc(data_size); // +1 para o BCC2
 
             for (int j = 0; j < data_size; j++){  
+                // printf("%0.2x\n",*ptr);
                 data_destuffed[j] = *ptr;
                 ptr++;
             }
             BCC2_destuffed = *ptr;
+            // printf("%02x bcc\n",BCC2_destuffed);
+            // printf("%02x bcc calculated\n",BCC2_calculation(data_destuffed,data_size));
             
             if(BCC2_destuffed == BCC2_calculation(data_destuffed,data_size)){ //compara BCC2
                 stateM_data_BCC2 = 1;
                 ptr = ptr+1;
-            }
-
-            else{
+            } else{
                 printf("Frame has an error! Please request a new frame\n");
                 ptr = save_point;
                 clear_machine_stateM_data();

@@ -13,7 +13,7 @@
 #include "app.h"
 #include "link.h"
 
-#define DATASIZE 514 //Testing data size
+#define DATASIZE 512 //Testing data size
 
 
 int n_digits(int x){
@@ -131,8 +131,11 @@ int main(int argc, char** argv) {
 
       printf("-------Sending tramas----------\n");
 
-      llwrite(app,control_data_package(fileName,length,1),strlen(fileName) + n_digits(length) + 5);
-      
+      if((llwrite(app,control_data_package(fileName,length,1),strlen(fileName) + n_digits(length) + 5)) < 0){
+        printf("Max retransmissions reached. Exiting...\n");
+        return -1;
+      }
+
       unsigned char* file_data = malloc(chunk_size);
     
       int current = 0, counter = 0;
@@ -148,10 +151,12 @@ int main(int argc, char** argv) {
           printf("Max retransmissions reached. Exiting...\n");
           return -1;
         }
-
       }
 
-      llwrite(app,control_data_package(fileName,length,2),strlen(fileName) + n_digits(length) + 5);
+      if((llwrite(app,control_data_package(fileName,length,2),strlen(fileName) + n_digits(length) + 5)) < 0){
+        printf("Max retransmissions reached. Exiting...\n");
+        return -1;
+      }
 
       printf("-------Disconnect tramas----------\n"); 
 
@@ -165,15 +170,16 @@ int main(int argc, char** argv) {
 
     }else{ // reciever
       FILE *fp;
-      // char* fileName = "pinguim_transmitted.gif";
+      char* fileName = "pinguim_transmitted.gif";
       
       printf("-------Receiving tramas----------\n");
       
       unsigned char* received = malloc(0);
       llread(app,&received, DATASIZE, fp);
+      // printf("%d read bytes\n",reader(app,&received));
 
 
-    }
+    } 
 
     llclose(app);
     close(app.fileDescriptor);
