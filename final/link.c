@@ -33,8 +33,7 @@
 #define FALSE 0
 #define TRUE 1
 
-// #define DATASIZE 5
-// #define PACKAGE_SIZE DATASIZE + 6
+int PACKAGE_SIZE;
 
 volatile int STOP=FALSE;
 
@@ -61,6 +60,7 @@ unsigned char* file_size_received;
 
 int flag=0, conta=1;
 int flag_send=0, conta_send=1;
+int flag_disc=0, conta_disc=1;
 
 int control = 0, disconnect = 0;
 int  tramas_r = 0;
@@ -131,16 +131,17 @@ int llopen(applicationLayer app){
         }
         alarm(driver_layer.timeout);
 
-        while(conta < driver_layer.numTransmissions){
+        while(conta <= driver_layer.numTransmissions){
 
             if(flag){
                 alarm(driver_layer.timeout);
                 flag=0;
-
+                printf("printing\n");
                 if((res = write(app.fileDescriptor,SET,5)) < 0){
                     printf("Error occurred at write() function.\n Exiting! \n");
                     return -1;
                 }
+                conta++;
             }
 
             if((res = read(app.fileDescriptor,buf,5)) > 0){
@@ -233,27 +234,19 @@ int llclose_writter(applicationLayer app){
             //comparar o trama com DISC e mandar um UA e fechar
             if(memcmp(received,DISC,size_received) == 0){
                 printf("received DISC message, sending UA\n");    
-                write(app.fileDescriptor,UA_R_1,sizeof(UA_R_1));
+                if(write(app.fileDescriptor,UA_R_1,sizeof(UA_R_1)) < 0){ 
+                    printf("Error occurred at write() function.\n Exiting! \n");
+                    exit(1);
+                }
                 return 0;
             }
-            
         }
     }
 
     return 0;
 }
 
-void signal_handler_send() {
-    if(conta_send == 0 ){
-        flag_send=1;
-    }else{
-        printf("No valid message recieved! Resending message... %d\\%d\n",conta_send,ALARM_TIMEOUT);
-        flag_send=1;
-    }
-}
-
 int llwrite(applicationLayer app, unsigned char* src, int src_size){
-
     
     int stuff_data_size = 0, bytesWritten = 0, size_received;
 
@@ -278,14 +271,13 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
             flag_send=0;
             //voltar a enviar apos o timeout
             bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
-            printf("Sending trama with %d bytes\n",bytesWritten);
-            printer(stuff_data,stuff_data_size);
+            printf("Resending trama with %d bytes\n",bytesWritten);
             conta_send++;
         }
 
         //guardar o trama que recebeu em received
         if((size_received = read(app.fileDescriptor,received,src_size*2+6)) > 0){
-            printer(received,size_received);
+            // printer(received,size_received);
         }
 
         if(size_received > 0){
@@ -293,7 +285,7 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
             if(size_received == 5){
                 if(control == 0){
                     if(memcmp(received,RR_1,size_received) == 0){
-                        printf("received RR_1 with N = %x\n",received[2]);    
+                        printf("received RR_1 with %d bytes\n--------\n",size_received);    
                         alarm(0);
                         control = 1;
                         conta_send = 0;
@@ -302,7 +294,7 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
                 }
                 if(control == 1){
                     if(memcmp(received,RR_0,size_received) == 0){
-                        printf("received RR_0 with N = %d\n",received[2]);    
+                        printf("received RR_0 with %d bytes\n--------\n",size_received);    
                         alarm(0);
                         control = 0;
                         conta_send = 0;
@@ -327,24 +319,23 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
     if(conta_send - 1 == driver_layer.numTransmissions){
         return -1;
     } 
-    conta_send = 0;
+    conta_send = 1;
     return 0;
 }
 
 
 int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
 
-    int N_control = 1;
-    int res;
+    int N_control = 1, res, maxDataSize = datasize * 2 +6;
 
     while(TRUE) {
-        char buf[600];
+        char buf[maxDataSize];
 
-        int total_read = 0, buf_size = 600;
+        int total_read = 0, buf_size = maxDataSize;
         int n_read; 
 
         while ((n_read = read(app.fileDescriptor, buf + total_read, buf_size - total_read)) > 0) {
-            printf("%d n_read\n",n_read);
+            // printf("%d n_read\n",n_read);
             total_read += n_read;
         }
         // printer(buf, total_read);
@@ -355,7 +346,7 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
             unsigned char* data_unstuffed = malloc(res);
 
             int size_data_unstuffed = 0;
-            data_unstuffed = byte_destuff(buf,res,&size_data_unstuffed);
+            data_unstuffed = byte_destuff((unsigned char*)buf,res,&size_data_unstuffed);
 
             // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
             if(res == 5){
@@ -380,7 +371,13 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     if(buf[4] == 2){
                         if(buf[2] == 0){
                             printf("recieved start control trama\n");
-                            fp = fopen("pinguim_transmitted.gif", "w");
+                            //+4 para remover o header
+                            open_control_data_package(data_unstuffed+4);
+                            printf("%s\n",file_size_received);
+                            char fwrite_name[200];
+                            memcpy(fwrite_name,file_name_received,atoi(file_size_received));
+                            strcat(fwrite_name,"_transmitter");
+                            fp = fopen(fwrite_name, "w");
                             if(fp == NULL){
                                 printf("File Open failed\n");
                                 return -1;
@@ -404,11 +401,13 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                             printf("recieved end control trama\n");
                             write(app.fileDescriptor,RR_1,sizeof(RR_1));
                             fclose(fp); 
+                            printf("-------Disconnect tramas----------\n"); 
                             continue;
                         }else if (buf[2] == 1){
                             printf("recieved end control trama\n");
                             write(app.fileDescriptor,RR_0,sizeof(RR_0));
                             fclose(fp); 
+                            printf("-------Disconnect tramas----------\n"); 
                             continue;
                         }
                     }
@@ -416,10 +415,8 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     if(buf[4] == 1){ //trama de informacao
                         printf("temp[2] = %d N_control = %d\n",buf[2],N_control);
                         if(N_control == buf[2]){
-                            printer(data_unstuffed+8,size_data_unstuffed-10);
-                            fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
                             
-                //             printf("Received trama is correct \n");
+                            fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
 
                             if(buf[2] == 0){
                                 printf("Responding with a RR_1 message with ");
@@ -445,7 +442,9 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                             }
                         }
                     }
-                }    
+                } else {
+                    //rejj
+                }   
             tramas_r++;
             }
     }
@@ -453,16 +452,30 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
 }
 
 void signal_handler() {
-	printf("No valid message UA recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
-	flag=1;
-	conta++;
+    if(conta == 0 ){
+        flag=1;
+    }else{
+	    printf("No valid message UA recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
+        flag=1;
+    }
 }
 
+void signal_handler_send() {
+    if(conta_send == 0 ){
+        flag_send=1;
+    }else{
+        printf("No valid response message recieved! Resending message... %d\\%d\n",conta_send,ALARM_TIMEOUT);
+        flag_send=1;
+    }
+}
 
 void signal_handler_disc() {
-    printf("No valid message DISC recieved! Resending message... %d\\%d\n",conta,ALARM_TIMEOUT);
-	flag=1;
-	conta++;
+	if(conta_disc == 0 ){
+        flag_disc=1;
+    }else{
+        printf("No valid message DISC recieved! Resending message... %d\\%d\n",conta_send,ALARM_TIMEOUT);
+        flag_disc=1;
+    }
 }
 
 unsigned char BCC2(unsigned char* data, int size){
@@ -537,6 +550,7 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
 
 void open_control_data_package(unsigned char* received_control_data_package){
     //if(received_control_data_package[0] == 0x03)
+    // 7e 03 00 03 02 00 07 33 30 35 38 39 30 35 01 08 74 65 73 74 2e 67 69 66 6e 7e 
 
     int states[2] = {0,0};
     int size;

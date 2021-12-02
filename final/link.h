@@ -1,6 +1,9 @@
+#include "app.h"
+
 #define MAX_SIZE 255
 
-#include "app.h"
+
+
 
 typedef struct linkLayer{
     char port[20];                 /*Dispositivo /dev/ttySx, x = 0, 1*/
@@ -16,7 +19,6 @@ int llclose(applicationLayer app);
 int llclose_writter(applicationLayer app);
 int llwrite(applicationLayer app, unsigned char* src, int src_size);
 int llread(applicationLayer app, unsigned char** output, int datasize,FILE *fp);
-int reader(applicationLayer app, unsigned char ** buffer);
 unsigned char BCC2(unsigned char* data, int size);
 unsigned char* framing(unsigned char* data, int size,int* framed_data_size);
 void signal_handler();

@@ -13,8 +13,7 @@
 #include "app.h"
 #include "link.h"
 
-#define DATASIZE 512 //Testing data size
-
+#define DATASIZE 700 //Testing data size
 
 int n_digits(int x){
     int cont = 0;
@@ -22,7 +21,6 @@ int n_digits(int x){
         x = x/10;
         cont++;
     }
-
     return cont;
 }
 
@@ -124,13 +122,14 @@ int main(int argc, char** argv) {
     if (app.status == 1) { // transmitter 
       
       FILE *fp;
-      char* fileName = "pinguim.gif";
+      char* fileName = "text2.gif";
       int length = openFile(&fp, fileName);
 
       int chunk_size = DATASIZE, bytesRead;
 
       printf("-------Sending tramas----------\n");
 
+      //send control package start
       if((llwrite(app,control_data_package(fileName,length,1),strlen(fileName) + n_digits(length) + 5)) < 0){
         printf("Max retransmissions reached. Exiting...\n");
         return -1;
@@ -152,6 +151,7 @@ int main(int argc, char** argv) {
           return -1;
         }
       }
+      //send control package end
 
       if((llwrite(app,control_data_package(fileName,length,2),strlen(fileName) + n_digits(length) + 5)) < 0){
         printf("Max retransmissions reached. Exiting...\n");
@@ -176,7 +176,6 @@ int main(int argc, char** argv) {
       
       unsigned char* received = malloc(0);
       llread(app,&received, DATASIZE, fp);
-      // printf("%d read bytes\n",reader(app,&received));
 
 
     } 
