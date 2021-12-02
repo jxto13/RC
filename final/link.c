@@ -57,6 +57,7 @@ unsigned char UA_R_1[5] = {0x7E,0x01,0x07,0x04,0x7E};
 
 unsigned char* file_name_received;
 unsigned char* file_size_received;
+int file_name_size;
 
 int flag=0, conta=1;
 int flag_send=0, conta_send=1;
@@ -373,10 +374,9 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                             printf("recieved start control trama\n");
                             //+4 para remover o header
                             open_control_data_package(data_unstuffed+4);
-                            printf("%s\n",file_size_received);
                             char fwrite_name[200];
-                            memcpy(fwrite_name,file_name_received,atoi(file_size_received));
-                            strcat(fwrite_name,"_transmitter");
+                            memcpy(fwrite_name,file_name_received,file_name_size);
+                            strcat(fwrite_name,"test");
                             fp = fopen(fwrite_name, "w");
                             if(fp == NULL){
                                 printf("File Open failed\n");
@@ -551,7 +551,7 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
 void open_control_data_package(unsigned char* received_control_data_package){
     //if(received_control_data_package[0] == 0x03)
     // 7e 03 00 03 02 00 07 33 30 35 38 39 30 35 01 08 74 65 73 74 2e 67 69 66 6e 7e 
-
+    printer(received_control_data_package,26);
     int states[2] = {0,0};
     int size;
 
@@ -561,7 +561,9 @@ void open_control_data_package(unsigned char* received_control_data_package){
     if(*ptr == 0x00){ //Se o tipo for T1
         ptr++; //Passa para o tamanho L1
         size = *ptr;
-        file_size_received = malloc(*ptr);
+        file_name_size = size;
+        printf("SIZE:%d\n",size);
+        file_size_received = malloc(size);
         for (int i = 0; i < size; i++)
         {
             ptr++; //Para percorrer a trama e ler os valores
@@ -575,13 +577,16 @@ void open_control_data_package(unsigned char* received_control_data_package){
     if(*ptr == 0x01){ //Se o tipo for T2
         ptr++; //Passa para o tamanho L2
         size = *ptr;
-        file_name_received = malloc(*ptr);
+        file_name_received = malloc(size);
+        file_name_size = size;
         for (int i = 0; i < size; i++)
         {
             ptr++; //Para percorrer a trama e ler os valores
             file_name_received[i] = *ptr; //Guarda os valores na variável global
+            printf("VALOR DO PTR: %x\n", *ptr);
+            printf("VALOR DO FILE_NAME_RECEIVED[%d]: %x\n",i, file_name_received[i]);
         }
-        states[1] = 1; //Para confirmar que já guardou o tamanho do ficheiro
+        states[1] = 1; //Para confirmar que já guardou o nome do ficheiro
     }
 
     else{
