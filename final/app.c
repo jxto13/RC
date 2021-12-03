@@ -13,7 +13,7 @@
 #include "app.h"
 #include "link.h"
 
-#define DATASIZE 700 //Testing data size
+#define DATASIZE 512 //Testing data size
 
 int n_digits(int x){
     int cont = 0;
@@ -69,6 +69,7 @@ int openFile(FILE** fp, char* fileName){
     rewind(*fp); 
   } else{
     printf("Failed to open file '%s'",fileName);
+    exit(1);
   }
   return length;
 }
@@ -122,7 +123,7 @@ int main(int argc, char** argv) {
     if (app.status == 1) { // transmitter 
       
       FILE *fp;
-      char* fileName = "test.gif";
+      char* fileName = "pinguim.gif";
       int length = openFile(&fp, fileName);
 
       int chunk_size = DATASIZE, bytesRead;
@@ -170,7 +171,6 @@ int main(int argc, char** argv) {
 
     }else{ // reciever
       FILE *fp;
-      char* fileName = "pinguim_transmitted.gif";
       
       printf("-------Receiving tramas----------\n");
       

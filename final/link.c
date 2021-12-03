@@ -205,8 +205,6 @@ void printer(unsigned char* src, int size){
 }
 
 int llclose_writter(applicationLayer app){
-    //resetar a conta caso tenha havido algum timeout
-    conta = 0;
     //se chegou aqui e que acabou de enviar o ficheiro e a trama de controlo, agr desconectar 
     (void) signal(SIGALRM, signal_handler_disc);
 
@@ -219,16 +217,16 @@ int llclose_writter(applicationLayer app){
     alarm(driver_layer.timeout);
 
     while(conta <= driver_layer.numTransmissions){
-        if(flag){
+        if(flag_disc){
             alarm(driver_layer.timeout);
-            flag=0;
+            flag_disc=0;
             //voltar a enviar apos o timeout
             write(app.fileDescriptor,DISC, sizeof(DISC));
+            conta_disc++;
         }
 
         //guardar o trama que recebeu em received
         if((size_received = read(app.fileDescriptor,received,5)) > 0){
-            tcflush(app.fileDescriptor, TCIOFLUSH);
         }
 
         if(size_received > 0){
@@ -243,6 +241,11 @@ int llclose_writter(applicationLayer app){
             }
         }
     }
+    //conta-1 pk no ultimo alarme e feito conta++, e entao se for o maximo de trasmissoes, return -1 
+    if(conta_disc - 1 == driver_layer.numTransmissions){
+        return -1;
+    } 
+    conta_disc = 1;
 
     return 0;
 }
@@ -261,7 +264,7 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
 
     bytesWritten = write(app.fileDescriptor,stuff_data, stuff_data_size);
     printf("Sending trama with %d bytes\n",bytesWritten);
-    printer(stuff_data,stuff_data_size);
+    // printer(stuff_data,stuff_data_size);
     alarm(driver_layer.timeout);
 
 
@@ -327,12 +330,6 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
 
 int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
 
-
-     //FOR TESTING NOISE 
-     time_t t; 
-     srand((unsigned) time(&t));
-
-
     int N_control = 1, res, maxDataSize = datasize * 2 +6;
 
     while(TRUE) {
@@ -354,9 +351,6 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
 
             int size_data_unstuffed = 0;
             data_unstuffed = byte_destuff((unsigned char*)buf,res,&size_data_unstuffed);
-            if(rand() % 15 == 7 && size_data_unstuffed > 5){
-                data_unstuffed[size_data_unstuffed - 4] = 0x99;
-            }
 
             // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
             if(res == 5){
@@ -380,14 +374,12 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     // se receber um pacote de start
                     if(buf[4] == 2){
                         if(buf[2] == 0){
-                            printf("recieved start control trama\n");
+                            printf("recieved start control trama\n  ----------- \n");
                             //+4 para remover o header
                             open_control_data_package(data_unstuffed+4);
-                            /*char fwrite_name[file_name_size];
-                            memcpy(fwrite_name,file_name_received,file_name_size);
-                            strcat(fwrite_name,"test");*/
+    
                             fp = fopen("pinguim_transmitted.gif", "w"); 
-                            //dei hardcode para testar o REJ
+                            
                             if(fp == NULL){
                                 printf("File Open failed\n");
                                 return -1;
@@ -395,7 +387,9 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                             write(app.fileDescriptor,RR_1,sizeof(RR_1));
                             continue;
                         }else if (buf[2] == 1){
-                            printf("recieved start control trama\n");
+                            printf("recieved start control trama\n  ----------- \n");
+                            open_control_data_package(data_unstuffed+4);
+
                             fp = fopen("pinguim_transmitted.gif", "w");
                             if(fp == NULL){
                                 printf("File Open failed\n");
@@ -408,13 +402,13 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     // se receber um pacote de end
                     if(buf[4] == 3){
                         if(buf[2] == 0){
-                            printf("recieved end control trama\n");
+                            printf("recieved end control trama\n  ----------- \n");
                             write(app.fileDescriptor,RR_1,sizeof(RR_1));
                             fclose(fp); 
                             printf("-------Disconnect tramas----------\n"); 
                             continue;
                         }else if (buf[2] == 1){
-                            printf("recieved end control trama\n");
+                            printf("recieved end control trama\n  ----------- \n");
                             write(app.fileDescriptor,RR_0,sizeof(RR_0));
                             fclose(fp); 
                             printf("-------Disconnect tramas----------\n"); 
@@ -423,18 +417,18 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     }
 
                     if(buf[4] == 1){ //trama de informacao
-                        printf("temp[2] = %d N_control = %d\n",buf[2],N_control);
+                        // printf("temp[2] = %d N_control = %d\n",buf[2],N_control);
                         if(N_control == buf[2]){
                             
                             fwrite(data_unstuffed+8,1,size_data_unstuffed-10,fp);
 
                             if(buf[2] == 0){
                                 printf("Responding with a RR_1 message with ");
-                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
+                                printf("%d bytes\n ----------- \n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
                                 N_control = 1;
                             }else if (buf[2] == 1){
                                 printf("Responding with a RR_0 message with ");
-                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
+                                printf("%d bytes\n ----------- \n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
                                 N_control = 0;
                             }
                             control = buf[2];
@@ -443,11 +437,11 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                             printf("frame is repeated\n");
                             if(buf[2] == 0){
                                 printf("Responding with a RR_1 message with ");
-                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
+                                printf("%d bytes\n ----------- \n",(int) write(app.fileDescriptor,RR_1,sizeof(RR_1)));
                                 continue;
                             }else if (buf[2] == 1){
                                 printf("Responding with a RR_0 message with ");
-                                printf("%d bytes\n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
+                                printf("%d bytes\n ----------- \n",(int) write(app.fileDescriptor,RR_0,sizeof(RR_0)));
                                 continue;
                             }
                         }
@@ -456,11 +450,11 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                     printf("Error detected in data\n");
                     if(buf[2] == 0){
                         printf("Responding with a REJ_1 message with ");
-                        printf("%d bytes \n", (int) write(app.fileDescriptor,REJ_1,sizeof(REJ_1))); 
+                        printf("%d bytes \n ----------- \n", (int) write(app.fileDescriptor,REJ_1,sizeof(REJ_1))); 
                     }
                     else if(buf[2] == 1){
                         printf("Responding with a REJ_0 message with ");
-                        printf("%d bytes \n", (int) write(app.fileDescriptor,REJ_0,sizeof(REJ_0)));
+                        printf("%d bytes \n ----------- \n", (int) write(app.fileDescriptor,REJ_0,sizeof(REJ_0)));
                     }
                 }
             tramas_r++;
@@ -569,7 +563,7 @@ unsigned char* framing(unsigned char* data, int size, int* framed_data_size){
 void open_control_data_package(unsigned char* received_control_data_package){
     //if(received_control_data_package[0] == 0x03)
     // 7e 03 00 03 02 00 07 33 30 35 38 39 30 35 01 08 74 65 73 74 2e 67 69 66 6e 7e 
-    printer(received_control_data_package,26);
+    // printer(received_control_data_package,26);
     int states[2] = {0,0};
     int size;
 
@@ -580,7 +574,7 @@ void open_control_data_package(unsigned char* received_control_data_package){
         ptr++; //Passa para o tamanho L1
         size = *ptr;
         file_name_size = size;
-        printf("SIZE:%d\n",size);
+        // printf("SIZE:%d\n",size);
         file_size_received = malloc(size);
         for (int i = 0; i < size; i++)
         {
@@ -601,8 +595,8 @@ void open_control_data_package(unsigned char* received_control_data_package){
         {
             ptr++; //Para percorrer a trama e ler os valores
             file_name_received[i] = *ptr; //Guarda os valores na variável global
-            printf("VALOR DO PTR: %x\n", *ptr);
-            printf("VALOR DO FILE_NAME_RECEIVED[%d]: %x\n",i, file_name_received[i]);
+            // printf("VALOR DO PTR: %x\n", *ptr);
+            // printf("VALOR DO FILE_NAME_RECEIVED[%d]: %x\n",i, file_name_received[i]);
         }
         states[1] = 1; //Para confirmar que já guardou o nome do ficheiro
     }

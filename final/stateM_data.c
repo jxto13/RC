@@ -60,7 +60,7 @@ int stateM_data(unsigned char* frame, int data_size, int frame_size){
                 stateM_data_BCC2 = 1;
                 ptr = ptr+1;
             } else{
-                printf("Frame has an error! Please request a new frame\n");
+                // printf("Frame has an error! Please request a new frame\n");
                 ptr = save_point;
                 clear_machine_stateM_data();
             }
