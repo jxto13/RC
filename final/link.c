@@ -327,6 +327,12 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
 
 int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
 
+
+     //FOR TESTING NOISE 
+     time_t t; 
+     srand((unsigned) time(&t));
+
+
     int N_control = 1, res, maxDataSize = datasize * 2 +6;
 
     while(TRUE) {
@@ -348,6 +354,9 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
 
             int size_data_unstuffed = 0;
             data_unstuffed = byte_destuff((unsigned char*)buf,res,&size_data_unstuffed);
+            if(rand() % 15 == 7 && size_data_unstuffed > 5){
+                data_unstuffed[size_data_unstuffed - 4] = 0x99;
+            }
 
             // se recebemos 5 bytes significa que esta a receber uma trama de supervisao e nao numerada
             if(res == 5){
@@ -374,10 +383,11 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                             printf("recieved start control trama\n");
                             //+4 para remover o header
                             open_control_data_package(data_unstuffed+4);
-                            char fwrite_name[200];
+                            /*char fwrite_name[file_name_size];
                             memcpy(fwrite_name,file_name_received,file_name_size);
-                            strcat(fwrite_name,"test");
-                            fp = fopen(fwrite_name, "w");
+                            strcat(fwrite_name,"test");*/
+                            fp = fopen("pinguim_transmitted.gif", "w"); 
+                            //dei hardcode para testar o REJ
                             if(fp == NULL){
                                 printf("File Open failed\n");
                                 return -1;
@@ -443,8 +453,16 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
                         }
                     }
                 } else {
-                    //rejj
-                }   
+                    printf("Error detected in data\n");
+                    if(buf[2] == 0){
+                        printf("Responding with a REJ_1 message with ");
+                        printf("%d bytes \n", (int) write(app.fileDescriptor,REJ_1,sizeof(REJ_1))); 
+                    }
+                    else if(buf[2] == 1){
+                        printf("Responding with a REJ_0 message with ");
+                        printf("%d bytes \n", (int) write(app.fileDescriptor,REJ_0,sizeof(REJ_0)));
+                    }
+                }
             tramas_r++;
             }
     }

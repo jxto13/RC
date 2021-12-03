@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
     if (app.status == 1) { // transmitter 
       
       FILE *fp;
-      char* fileName = "pinguim.gif";
+      char* fileName = "test.gif";
       int length = openFile(&fp, fileName);
 
       int chunk_size = DATASIZE, bytesRead;
