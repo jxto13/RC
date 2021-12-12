@@ -7,7 +7,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
-#include <time.h>
 
 #include "stateM_lib.h"
 #include "link.h"
@@ -332,28 +331,22 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
 int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
 
     int N_control = 1, res, maxDataSize = datasize * 2 +6;
-    double total = 0;
+
     while(TRUE) {
         char buf[maxDataSize];
 
         int total_read = 0, buf_size = maxDataSize;
         int n_read; 
-        clock_t start = clock();
+
         // Executable code
         while ((n_read = read(app.fileDescriptor, buf + total_read, buf_size - total_read)) > 0) {
             // printf("%d n_read\n",n_read);
             total_read += n_read;
         }
         // printer(buf, total_read);
-        clock_t stop = clock();
 
-     
         res = total_read;
         if(res > 0){
-            total += (double)(stop - start) / CLOCKS_PER_SEC;
-            printf("Time elapsed in s: %f\n", total);
-            
-
             printf("Received trama with %d bytes \n",res);
             unsigned char* data_unstuffed = malloc(res);
 
