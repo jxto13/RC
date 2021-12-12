@@ -13,7 +13,7 @@
 #include "app.h"
 #include "link.h"
 
-#define DATASIZE 512 //Testing data size
+#define DATASIZE 4096 //Testing data size
 
 int n_digits(int x){
     int cont = 0;
@@ -76,7 +76,7 @@ int openFile(FILE** fp, char* fileName){
 
 int main(int argc, char** argv) {
 
-    if (argc != 2) {
+    if (argc != 3) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
@@ -91,8 +91,11 @@ int main(int argc, char** argv) {
     int input = 0;
     do{
       printf("t = transmitter | r = reciever | 1 = exit program \n");
-      char mode = getchar();
-      getchar(); // clear the buffer which contains newline char
+      char mode = argv[2][0];
+      printf("%c\n",argv[2][0]);
+      input = 1;
+      // char mode = getchar();
+      // getchar(); // clear the buffer which contains newline char
 
       switch (mode) {
         case 't': // transmitter mode
@@ -174,8 +177,12 @@ int main(int argc, char** argv) {
       
       printf("-------Receiving tramas----------\n");
       
+      
       unsigned char* received = malloc(0);
       llread(app,&received, DATASIZE, fp);
+      // ---------
+      
+      
 
 
     } 

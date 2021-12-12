@@ -3,10 +3,10 @@ driver:
 	gcc -Wall app.c link.c stateM_lib.c byteStuffing.c stateM_data.c -o main -lm
 
 run_emissor:
-	@./main /dev/ttyS10 
+	@./main /dev/ttyS10 t
 
 run_reader:
-	@./main /dev/ttyS11
+	@./main /dev/ttyS11 r
 
 openVport:
 	sudo socat -d -d PTY,link=/dev/ttyS10,mode=777 PTY,link=/dev/ttyS11,mode=777
