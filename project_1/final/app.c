@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
-#include <time.h>
 
 #include "stateM_lib.h"
 #include "app.h"
@@ -92,11 +91,9 @@ int main(int argc, char** argv) {
     int input = 0;
     do{
       printf("t = transmitter | r = reciever | 1 = exit program \n");
-      char mode = argv[2][0];
-      printf("%c\n",argv[2][0]);
-      input = 1;
-      // char mode = getchar();
-      // getchar(); // clear the buffer which contains newline char
+  
+      char mode = getchar();
+      getchar(); // clear the buffer which contains newline char
 
       switch (mode) {
         case 't': // transmitter mode
@@ -178,15 +175,10 @@ int main(int argc, char** argv) {
       
       printf("-------Receiving tramas----------\n");
       
-      clock_t start = clock();
-      // Executable code
       unsigned char* received = malloc(0);
       llread(app,&received, DATASIZE, fp);
-      // ---------
-      clock_t stop = clock();
 
-      double elapsed = (double)(stop - start) / CLOCKS_PER_SEC;
-      printf("Time elapsed in s: %f\n", elapsed);
+
       
 
 

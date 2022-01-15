@@ -14,7 +14,7 @@
 #include "app.h"
 #include "stateM_data.h"
 
-#define BAUDRATE B4800
+#define BAUDRATE B9600
 #define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 
@@ -331,14 +331,13 @@ int llwrite(applicationLayer app, unsigned char* src, int src_size){
 int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp){
 
     int N_control = 1, res, maxDataSize = datasize * 2 +6;
-
+    double total = 0;
     while(TRUE) {
         char buf[maxDataSize];
 
         int total_read = 0, buf_size = maxDataSize;
         int n_read; 
 
-        // Executable code
         while ((n_read = read(app.fileDescriptor, buf + total_read, buf_size - total_read)) > 0) {
             // printf("%d n_read\n",n_read);
             total_read += n_read;
@@ -461,6 +460,7 @@ int llread(applicationLayer app, unsigned char** output, int datasize, FILE *fp)
             tramas_r++;
             }
     }
+
     return 0;
 }
 
