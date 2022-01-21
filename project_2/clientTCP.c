@@ -11,17 +11,19 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include <netdb.h>
 #include <fcntl.h>
-
+#include <libgen.h>
 #include <string.h>
-#include "ftpclient.h"
+// #include "ftpclient.h"
 
 #define SERVER_PORT 21
 
-#define SERVER_ADDR "193.137.29.15"
+// #define SERVER_ADDR "193.137.29.15"
 
 #define FTP_BAD -2 /* Catch all, socket errors etc. */
+
+char* filename;
 
 int get_line(int s, char *buf, unsigned buf_size);
 
@@ -46,6 +48,19 @@ int main(int argc, char **argv)
   // hostname = temp1[2]
   // path = temp1[3]
 
+  filename = basename(temp1[3]);
+
+  struct hostent *h;
+
+ 
+  if ((h = gethostbyname(temp1[2])) == NULL) {
+          herror("gethostbyname()");
+          exit(-1);
+      }
+
+  printf("Host name  : %s\n", h->h_name);
+  printf("IP Address : %s\n", inet_ntoa(*((struct in_addr *) h->h_addr)));
+
   int sockfd;
   struct sockaddr_in server_addr;
   size_t bytes;
@@ -53,7 +68,7 @@ int main(int argc, char **argv)
   /*server address handling*/
   bzero((char *)&server_addr, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDR); /*32 bit Internet address network byte ordered*/
+  server_addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) h->h_addr))); /*32 bit Internet address network byte ordered*/
   server_addr.sin_port = htons(SERVER_PORT);            /*server TCP port must be network byte ordered */
 
   /*open a TCP socket*/
@@ -310,7 +325,8 @@ int receive_file(int data_s)
   char temp[BUFSIZ];
   int n;
 
-  file = fopen("test", "wb");
+  
+  file = fopen(filename, "wb");
 
   if (file == NULL)
   {
