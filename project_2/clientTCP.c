@@ -122,28 +122,18 @@ int main(int argc, char **argv)
   sscanf(replyMessage, "227 Entering Passive Mode (%[^,],%[^,],%[^,],%[^,],%[^,],%[^)])", temp2[0], temp2[1], temp2[2], temp2[3],
          temp2[4], temp2[5]);
 
-  for (int i = 0; i < 6; i++)
-  {
-    if (i < 4)
-    {
+  for (int i = 0; i < 6; i++){
+    if (i < 4){
       strcat(dataTransferIP, temp2[i]);
-      if (i == 3)
-      {
+      if (i == 3){
         continue;
-      }
-      else
-      {
+      }else{
         strcat(dataTransferIP, ".");
       }
-    }
-    else
-    {
-      if (i == 4)
-      {
+    }else{
+      if (i == 4){
         dataPort = atoi(temp2[i]) * 256;
-      }
-      else
-      {
+      }else{
         dataPort += atoi(temp2[i]);
       }
     }
@@ -170,13 +160,10 @@ int main(int argc, char **argv)
   }
 
   /*connect to the server*/
-  if (connect(sockfd_download, (struct sockaddr *)&server_addr_download, sizeof(server_addr_download)) < 0)
-  {
+  if (connect(sockfd_download, (struct sockaddr *)&server_addr_download, sizeof(server_addr_download)) < 0){
     perror("connect()");
     exit(-1);
-  }
-  else
-  {
+  }else{
     printf("connection successful\n");
   }
 
@@ -318,8 +305,7 @@ int send_cmd(int s, char *msgbuf)
   return 1;
 }
 
-int receive_file(int data_s)
-{
+int receive_file(int data_s){
   FILE *file;
   int bytes_received = 0;
   char temp[BUFSIZ];
@@ -328,25 +314,20 @@ int receive_file(int data_s)
   
   file = fopen(filename, "wb");
 
-  if (file == NULL)
-  {
+  if (file == NULL){
     perror("Error in open file");
   }
 
   // read data in from server and write these into new file
   n = read(data_s, temp, 1);
-  while (n > 0)
-  {
+  while (n > 0){
     bytes_received += n;
     fwrite(temp, 1, n, file);
     n = read(data_s, temp, 1);
   }
-  if (n == 0)
-  {
+  if (n == 0){
     fclose(file);
-  }
-  else if (n < 0)
-  {
+  } else if (n < 0) {
     fprintf(stderr, "Error in read()");
   }
   return 0;

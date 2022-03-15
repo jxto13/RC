@@ -1,0 +1,41 @@
+Host name  : mirrors.up.pt
+IP Address : 193.137.29.15
+----------- 
+ message - 
+ bytes write 1 
+----------- 
+FTP: 220-Welcome to the University of Porto's mirror archive (mirrors.up.pt)
+FTP: 220----------------------------------------------------------------
+FTP: 220-
+FTP: 220-All connections and transfers are logged. The max number of connections is 200.
+FTP: 220-
+FTP: 220-For more information please visit our website: http://mirrors.up.pt/
+FTP: 220-Questions and comments can be sent to mirrors@uporto.pt
+FTP: 220-
+FTP: 220-
+FTP: 220 
+----------- 
+ message - USER anonymous
+ bytes write 15 
+----------- 
+FTP: 331 Please specify the password.
+----------- 
+ message - PASS 1234
+ bytes write 10 
+----------- 
+FTP: 230 Login successful.
+----------- 
+ message - PASV
+ bytes write 5 
+----------- 
+FTP: 227 Entering Passive Mode (193,137,29,15,216,42).
+Data Transfer IP: 193.137.29.15
+Data Transfer Port: 55338
+connection successful
+----------- 
+ message - retr pub/debian/README.html
+ bytes write 28 
+----------- 
+FTP: 150 Opening BINARY mode data connection for pub/debian/README.html (3207 bytes).
+read Success
+FTP: 226 Transfer complete.
